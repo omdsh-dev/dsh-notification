@@ -27,6 +27,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: link:../dsh/packages/client/ui-slots
         version: link:../dsh/packages/client/ui-slots
+      '@deepseek-ai/dsh-credentials':
+        specifier: link:../dsh/packages/credentials/credentials
+        version: link:../dsh/packages/credentials/credentials
       '@deepseek-ai/dsh-invariants':
         specifier: link:../dsh/packages/runtime-diagnostics/invariants
         version: link:../dsh/packages/runtime-diagnostics/invariants

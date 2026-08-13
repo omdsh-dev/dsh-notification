@@ -3,8 +3,11 @@
  * shared wire/settings faces re-exported for the host entry.
  */
 export type { NotificationProjectionValue, NotificationReason, NotificationRule, NotificationSettings } from './contract.ts';
+export type { ServerWebhookConfig } from './webhook.ts';
 /** Resolved plugin configuration (schema defaults applied). */
 export interface ResolvedConfig {
     /** Character budget for the projection body; longer replies are truncated host-side. */
     readonly maxBodyChars: number;
+    /** Optional server-side webhook configuration after schema defaults. */
+    readonly webhook?: import('./webhook.ts').ServerWebhookConfig;
 }

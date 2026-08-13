@@ -1,6 +1,6 @@
 {
   "name": "dsh-notification",
-  "description": "Browser desktop notifications when the DeepSeek Harness finishes a turn: configurable per-outcome toggles and include/exclude keyword rules, shown through the browser Notification API.",
+  "description": "Browser desktop notifications and optional Host-side webhooks when DeepSeek Harness finishes a turn.",
   "version": "0.1.1",
   "license": "MIT",
   "type": "module",
@@ -50,6 +50,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-credentials": "*",
     "@deepseek-ai/dsh-session": "*",
     "@deepseek-ai/dsh-session-projection": "*",
     "@deepseek-ai/dsh-invariants": "*",
@@ -61,6 +62,9 @@
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-credentials": {
       "optional": true
     },
     "@deepseek-ai/dsh-session": {
@@ -90,6 +94,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "link:../dsh/vendor/cordis",
+    "@deepseek-ai/dsh-credentials": "link:../dsh/packages/credentials/credentials",
     "@deepseek-ai/dsh-session": "link:../dsh/packages/core/session",
     "@deepseek-ai/dsh-session-projection": "link:../dsh/packages/session/session-projection",
     "@deepseek-ai/dsh-invariants": "link:../dsh/packages/runtime-diagnostics/invariants",

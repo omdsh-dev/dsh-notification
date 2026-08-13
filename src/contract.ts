@@ -21,7 +21,7 @@ export interface NotificationProjectionValue {
   readonly turn: number
   /** Why it ended — the raw `TurnEndReason` kind; the client maps the five known kinds. */
   readonly reason: string
-  /** The turn's final assistant reply text, bounded host-side. */
+  /** Assistant text collected during the turn, bounded host-side. */
   readonly body: string
   /** Tool names the turn called, deduplicated in first-seen order. */
   readonly tools: readonly string[]
