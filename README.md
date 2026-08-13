@@ -1,14 +1,14 @@
 # dsh-notification
 
-Desktop notifications for the DeepSeek Harness web GUI. When a session finishes a turn, the browser shows a system notification (via the `Notification` API), so you can switch tabs and still know when DSH is done. Per-outcome toggles and include/exclude keyword rules control exactly which completions notify.
+Completion notifications for DeepSeek Harness. The browser client shows system notifications while the page is open; an optional server webhook runs in the DSH Host and continues after every tab is closed.
 
 No harness change is needed: the host contributes a session projection (a bounded summary of each session's last completed turn), and the client watches the session list's completion reminder and applies its own persisted preferences.
 
 ```
-host:  notification projection (last turn's reason/text/tools) --session/projection--> browser
-client: session list completion reminder (live, dedup) + persisted settings
-        -> permission + current-session visibility gate
-        -> new Notification("DSH finished", { body: "deploy done" })
+host:  notification projection -> browser client
+       committed turn/end -> server webhook (optional)
+client: live completion reminder + persisted settings
+        -> permission + current-session visibility gate -> Notification API
 ```
 
 ## Install
@@ -33,29 +33,63 @@ The settings section lives under **Settings > Notifications**.
 
 Preferences persist in the browser (localStorage). The section also grants browser permission and sends a test notification.
 
-## Configuration
+## Server webhook
 
-Host-side tunables live on the plugin row in `cordis.yml`:
+The webhook is disabled by default. Enable it on the plugin row in `cordis.yml`:
 
 ```yaml
 - id: dsh-notification
   name: dsh-notification
   config:
-    maxBodyChars: 400      # projection body budget; longer replies are ellipsized host-side
+    maxBodyChars: 400
+    webhook:
+      enabled: true
+      reasons: [completed, error]
 ```
+
+Export the endpoint before starting DSH:
+
+```sh
+export DSH_NOTIFICATION_WEBHOOK_URL='https://notifications.example.com/dsh'
+```
+
+Generate a secret, then store it in `$DSH_HOME/.credentials.yaml` with mode `0600`:
+
+```sh
+node -e "console.log('whsec_'+require('node:crypto').randomBytes(32).toString('base64'))"
+```
+
+```yaml
+DSH_NOTIFICATION_WEBHOOK_SECRET: whsec_...
+```
+
+Browser settings do not affect webhooks. The Host sends matching top-level `turn/end` events and ignores subagents. Verify the [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md) signature and deduplicate by `webhook-id`; provider-specific endpoints may need a relay.
+
+```json
+{"id":"msg_…","type":"dsh.turn.ended","timestamp":"2026-08-13T12:34:56.789Z","data":{"turn":3,"reason":"completed"}}
+```
+
+| Data sent | Default | Enable with |
+| --- | --- | --- |
+| Event id, time, turn, outcome | sent | always present |
+| DSH session id | omitted | `includeSessionId: true` |
+| Assistant text collected during the turn | omitted | `includeBody: true` (bounded by `maxBodyChars`) |
+| Tool names (up to 32) | omitted | `includeTools: true` |
+
+HTTPS is required except for loopback development. `2xx` acknowledges delivery; redirects are not followed, and payloads over 16 KiB are not sent. Prompts and tool arguments/results are never fields, but `includeBody` may expose sensitive model text.
 
 ## Model experience
 
 | Aspect | Effect |
 | --- | --- |
-| Token cost | None — notifications are UI-only and never enter a request. |
+| Token cost | None — notifications never enter a model request. |
 | Tool calls | None — the model gets no new tool. |
 | Session log | Unchanged — the projection reads the existing log and adds no events. |
 | Prompt | Unchanged — no system-prompt section is registered. |
 
 ## Permission boundary
 
-- The host folds a pure projection over the session log (turn reason, bounded reply text, tool names) and the projection seam delivers it to the browser; the plugin writes nothing to the log and registers no model-facing tools.
+- The host folds a pure projection over the session log (turn reason, bounded reply text, tool names); the plugin writes nothing to the log and registers no model-facing tools.
 - The client watches the session list's completion reminder (a live "finished while not selected" edge the runtime already computes) and shows a notification only when the user has granted Notification permission.
 - Rule matching runs client-side against the projected content; the reply body never exceeds `maxBodyChars`.
 
@@ -72,8 +106,9 @@ The repo expects the harness checkout at `../dsh` for the dev-time `link:` resol
 
 ## Known limitations
 
-- Notifications require the page to be open (the browser shows them while it is hidden, but not after the tab is closed) and Notification permission granted; a denied site permission cannot be overridden from inside the page.
-- Notifications fire once per finished turn (a running→idle edge on any session); a completion that happened while the page was disconnected is not re-notified on reconnect.
+- Browser notifications need an open page and permission; webhooks need a running DSH Host.
+- Webhook delivery uses a bounded in-memory queue and finite retries. It can deliver duplicates, and stopping the Host can lose pending events. It does not backfill turns completed before the plugin loaded.
+- Browser notifications fire once per finished turn (a running→idle edge on any session); a completion that happened while the page was disconnected is not re-notified on reconnect.
 - The rule subject is the session title plus the last turn's reply text and tool names — earlier turns are not matched.
 - Notification body is a flat text snippet; the click action only focuses the window (no deep link to the turn).
 
