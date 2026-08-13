@@ -1,0 +1,12 @@
+{
+  "name": "dsh-notification",
+  "description": "Browser desktop notifications when the DeepSeek Harness finishes a turn",
+  "version": "0.1.0",
+  "entry": {
+    "name": "dsh-notification",
+    "inject": []
+  },
+  "client": {
+    "platform": "web"
+  }
+}

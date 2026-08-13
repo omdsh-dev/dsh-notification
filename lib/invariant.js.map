@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/invariant.ts"],
+  "sourcesContent": ["/**\n * Package-owned invariant companion for `dsh-notification`.\n * @module dsh-notification/invariant\n */\n\n/* jscpd:ignore-start */\nimport type { Context } from '@deepseek-ai/cordis'\nimport type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'\n\nconst PACKAGE_NAME = 'dsh-notification'\n\n/** Cordis companion plugin name. */\nexport const name = 'dsh-notification-invariant'\n/** Service required before the companion can reserve package ownership. */\nexport const inject = ['invariants']\n\n/**\n * No runtime invariant: the plugin owns no mutable cross-plugin state. The\n * `notification` projection is a pure fold (registry-owned registration, and\n * the projection seam owns delivery); the client settings live in a private\n * snapshot store. All are proven by the composition and fold specs rather than\n * by an event-stream relationship.\n */\nconst install: InvariantInstaller = () => {}\n\n/**\n * Register this package's invariant companion.\n * @param ctx - Cordis context carrying the invariant service.\n * @returns the installed registration's disposer after setup succeeds.\n */\nexport const apply = (ctx: Context): Promise<() => void> =>\n  Promise.resolve(ctx.invariants.register(PACKAGE_NAME, install))\n/* jscpd:ignore-end */\n"],
+  "mappings": ";AASA,IAAM,eAAe;AAGd,IAAM,OAAO;AAEb,IAAM,SAAS,CAAC,YAAY;AASnC,IAAM,UAA8B,MAAM;AAAC;AAOpC,IAAM,QAAQ,CAAC,QACpB,QAAQ,QAAQ,IAAI,WAAW,SAAS,cAAc,OAAO,CAAC;",
+  "names": []
+}

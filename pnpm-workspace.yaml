@@ -1,0 +1,6 @@
+packages:
+  - '.'
+autoInstallPeers: false
+nodeLinker: hoisted
+allowBuilds:
+  esbuild: true
