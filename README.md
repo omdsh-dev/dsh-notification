@@ -7,7 +7,7 @@ No harness change is needed: the host contributes a session projection (a bounde
 ```
 host:  notification projection (last turn's reason/text/tools) --session/projection--> browser
 client: session list completion reminder (live, dedup) + persisted settings
-        -> permission + background-only gate
+        -> permission + current-session visibility gate
         -> new Notification("DSH finished", { body: "deploy done" })
 ```
 
@@ -29,7 +29,7 @@ The settings section lives under **Settings > Notifications**.
 | Notify on completed / error / aborted / blocked / token limit | completed + error on, rest off | Which turn-end reasons notify (the host projection reports the reason). |
 | Keyword rules | none | Include/exclude filters matched against the session title, the turn's reply text, and its tool names. Include rules: at least one must match. Exclude rules: a match suppresses. Rules support literal or regex matching with an optional case-sensitive flag. |
 | Require manual dismiss | off | The notification stays until dismissed. |
-| Only notify in background | on | Only notify while the page is hidden, so watching is not interrupted; turn it off to also notify while the page is open. Notifications for the same session replace each other (one slot per session). |
+| Only notify when the task is out of view | on | Suppress a notification only when its session is currently in view. A completion still notifies while the page is hidden or while another session/workspace is open. Turn it off to notify even for the session being watched. Notifications for the same session replace each other. |
 
 Preferences persist in the browser (localStorage). The section also grants browser permission and sends a test notification.
 

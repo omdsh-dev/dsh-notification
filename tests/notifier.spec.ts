@@ -33,9 +33,14 @@ describe('shouldShow', () => {
   })
 
   it('honors the background-only gate', () => {
-    expect(shouldShow('granted', true, false)).toBe(false)
-    expect(shouldShow('granted', true, true)).toBe(true)
-    expect(shouldShow('granted', false, false)).toBe(true)
+    expect(shouldShow('granted', true, false, 'session-a', 'session-a')).toBe(false)
+    expect(shouldShow('granted', true, true, 'session-a', 'session-a')).toBe(true)
+    expect(shouldShow('granted', false, false, 'session-a', 'session-a')).toBe(true)
+  })
+
+  it('notifies for another session while DSH is visible', () => {
+    expect(shouldShow('granted', true, false, 'session-a', 'session-b')).toBe(true)
+    expect(shouldShow('granted', true, false, 'session-a', undefined)).toBe(true)
   })
 })
 

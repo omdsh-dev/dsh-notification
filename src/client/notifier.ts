@@ -24,11 +24,18 @@ export function bodyText(body: string, emptyBody: string): string {
 
 /**
  * Whether a completion should surface a desktop notification, given the browser
- * permission, the background-only preference, and whether the page is hidden.
+ * permission, the background-only preference, page visibility, and whether
+ * the completed session is the one currently in view.
  */
-export function shouldShow(permission: NotificationPermission, backgroundOnly: boolean, documentHidden: boolean): boolean {
+export function shouldShow(
+  permission: NotificationPermission,
+  backgroundOnly: boolean,
+  documentHidden: boolean,
+  completedSessionId?: string,
+  currentSessionId?: string,
+): boolean {
   if (permission !== 'granted') return false
-  if (backgroundOnly && !documentHidden) return false
+  if (backgroundOnly && !documentHidden && completedSessionId === currentSessionId) return false
   return true
 }
 

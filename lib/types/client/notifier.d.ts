@@ -10,9 +10,10 @@ export declare function titleKey(reason: NotificationReason): 'notify.titleCompl
 export declare function bodyText(body: string, emptyBody: string): string;
 /**
  * Whether a completion should surface a desktop notification, given the browser
- * permission, the background-only preference, and whether the page is hidden.
+ * permission, the background-only preference, page visibility, and whether
+ * the completed session is the one currently in view.
  */
-export declare function shouldShow(permission: NotificationPermission, backgroundOnly: boolean, documentHidden: boolean): boolean;
+export declare function shouldShow(permission: NotificationPermission, backgroundOnly: boolean, documentHidden: boolean, completedSessionId?: string, currentSessionId?: string): boolean;
 /** The grouping tag: one notification slot per session. */
 export declare function notificationTag(sessionId: string): string;
 /** The surface this code may show notifications on (absent in insecure contexts). */

@@ -85,10 +85,11 @@ export function apply(ctx: ClientContext): void {
           continue
         }
         const permission = notificationsApi()?.permission ?? 'denied'
-        const showIt = shouldShow(permission, current.backgroundOnly, document.hidden)
+        const showIt = shouldShow(permission, current.backgroundOnly, document.hidden, id, state.current)
         console.info(
           `[dsh-notification] turn ${nextTurn} ${id}: reason=${plan.reason} show=${showIt}`
-          + ` (permission=${permission} backgroundOnly=${current.backgroundOnly} hidden=${document.hidden})`,
+          + ` (permission=${permission} backgroundOnly=${current.backgroundOnly}`
+          + ` hidden=${document.hidden} current=${String(state.current)})`,
         )
         if (showIt) {
           show(
