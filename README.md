@@ -14,7 +14,7 @@ client: session list completion reminder (live, dedup) + persisted settings
 ## Install
 
 ```sh
-dsh plugin --profile <name> add file:/path/to/dsh-notification
+dsh plugin --profile web add https://github.com/omdsh-dev/dsh-notification/archive/refs/heads/main.tar.gz
 ```
 
 Restart the web server so the host half and the served client bundle pick up the plugin. The default `dsh web` profile has the required client composition (the session list, the settings shell, and locale).
@@ -80,4 +80,3 @@ The repo expects the harness checkout at `../dsh` for the dev-time `link:` resol
 ## License
 
 MIT
-
