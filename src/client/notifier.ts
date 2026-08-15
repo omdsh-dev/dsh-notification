@@ -39,9 +39,15 @@ export function shouldShow(
   return true
 }
 
-/** The grouping tag: one notification slot per session. */
-export function notificationTag(sessionId: string): string {
-  return `dsh-notification-${sessionId}`
+/**
+ * The grouping tag: one notification slot per session per turn. Turn-scoped
+ * (not session-scoped): the browser replaces same-tag notifications, and a
+ * stale same-tag entry lingering in the Windows notification center silently
+ * swallows every later notification with that tag — a per-turn tag guarantees
+ * each completed turn's toast always shows.
+ */
+export function notificationTag(sessionId: string, turn: number): string {
+  return `dsh-notification-${sessionId}-${turn}`
 }
 
 /** The surface this code may show notifications on (absent in insecure contexts). */

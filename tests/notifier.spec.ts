@@ -45,7 +45,7 @@ describe('shouldShow', () => {
 })
 
 describe('notificationTag', () => {
-  it('namespaces the tag per session', () => {
-    expect(notificationTag('session-1')).toBe('dsh-notification-session-1')
+  it('namespaces the tag per session and turn', () => {
+    expect(notificationTag('session-1', 3)).toBe('dsh-notification-session-1-3')
   })
 })

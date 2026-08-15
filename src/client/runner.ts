@@ -64,6 +64,6 @@ export function notificationFor(
   return {
     reason,
     body: projection?.body ?? title ?? '',
-    tag: notificationTag(sessionId),
+    tag: notificationTag(sessionId, projection?.turn ?? 0),
   }
 }

@@ -57,7 +57,11 @@ export function apply(ctx: ClientContext): void {
     notification.onclick = () => { window.focus() }
   }
   const sendTest = (): void => {
-    show(t('notify.testTitle'), t('notify.testBody'), 'dsh-notification-test', false)
+    // A unique tag per click: the browser replaces same-tag notifications, and a
+    // stale same-tag entry lingering in the Windows notification center silently
+    // swallows every later notification with that tag. A fresh tag per test
+    // guarantees the toast always shows.
+    show(t('notify.testTitle'), t('notify.testBody'), `dsh-notification-test-${Date.now()}`, false)
   }
 
   // Completion runner: the host projection's turn is monotonic per session,
