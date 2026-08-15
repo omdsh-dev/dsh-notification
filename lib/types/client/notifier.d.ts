@@ -3,9 +3,11 @@
  * out for unit tests, while the `Notification` construction stays in the thin
  * runner wired by the plugin body.
  */
-import type { NotificationReason } from '../contract.ts';
+import type { NotificationReason, PendingKind } from '../contract.ts';
 /** The reason title key for one turn-end reason. */
 export declare function titleKey(reason: NotificationReason): 'notify.titleCompleted' | 'notify.titleError' | 'notify.titleAborted' | 'notify.titleBlocked' | 'notify.titleMaxTokens';
+/** The title key for one pending-interaction kind. */
+export declare function pendingTitleKey(kind: PendingKind): 'notify.titleApproval' | 'notify.titleQuestion' | 'notify.titlePlanReview';
 /** The notification body: the reply snippet, or the empty-body fallback. */
 export declare function bodyText(body: string, emptyBody: string): string;
 /**
@@ -16,5 +18,7 @@ export declare function bodyText(body: string, emptyBody: string): string;
 export declare function shouldShow(permission: NotificationPermission, backgroundOnly: boolean, documentHidden: boolean, completedSessionId?: string, currentSessionId?: string): boolean;
 /** The grouping tag: one notification slot per session. */
 export declare function notificationTag(sessionId: string): string;
+/** The pending-interaction grouping tag: kept separate so it never replaces a completion notice. */
+export declare function pendingNotificationTag(sessionId: string): string;
 /** The surface this code may show notifications on (absent in insecure contexts). */
 export declare function notificationsApi(): typeof Notification | undefined;

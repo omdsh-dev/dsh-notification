@@ -24,6 +24,9 @@ function fullSettings(overrides: Partial<NotificationSettings> = {}): Notificati
     notifyAborted: false,
     notifyBlocked: false,
     notifyMaxTokens: false,
+    notifyApproval: true,
+    notifyQuestion: true,
+    notifyPlanReview: false,
     rules: [],
     requireInteraction: false,
     backgroundOnly: true,
@@ -73,6 +76,7 @@ describe('NotificationSettingsSection', () => {
     expect(container.textContent).toContain(zh['settings.enabled'])
     expect(container.textContent).toContain(zh['settings.permission.title'])
     expect(container.textContent).toContain(zh['settings.when.title'])
+    expect(container.textContent).toContain(zh['settings.pending.title'])
     expect(container.textContent).toContain(zh['settings.rules.title'])
     expect(container.textContent).toContain(zh['settings.advanced.title'])
     root.unmount()
@@ -94,6 +98,16 @@ describe('NotificationSettingsSection', () => {
     expect(aborted.checked).toBe(false)
     aborted.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(set).toHaveBeenCalledWith({ notifyAborted: true })
+    root.unmount()
+  })
+
+  it('renders one toggle per pending kind and routes its write', () => {
+    const set = vi.fn()
+    const { root, container } = mount(<NotificationSettingsSection {...props({ set })} />)
+    const planReview = checkboxForLabel(container, zh['settings.pending.planReview'])
+    expect(planReview.checked).toBe(false)
+    planReview.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(set).toHaveBeenCalledWith({ notifyPlanReview: true })
     root.unmount()
   })
 

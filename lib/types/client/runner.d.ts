@@ -6,7 +6,7 @@
  * reads (permission, visibility) and the Notification construction stay in the
  * plugin body.
  */
-import type { NotificationProjectionValue, NotificationReason, NotificationSettings } from '../contract.ts';
+import type { NotificationProjectionValue, NotificationReason, NotificationSettings, PendingKind } from '../contract.ts';
 /**
  * Fold one session's projection-turn observation: the first observation seeds
  * the baseline (never fires), and any later advance means the host projection
@@ -38,3 +38,37 @@ export interface NotificationPlan {
  * @returns the plan, or null when this completion must not notify.
  */
 export declare function notificationFor(sessionId: string, origin: string | undefined, title: string | undefined, projection: NotificationProjectionValue | undefined, settings: NotificationSettings): NotificationPlan | null;
+/**
+ * Fold one session's pending-interaction observation. The first observation
+ * (no prior record) seeds the baseline without firing — history is never
+ * re-notified, and a reconnect re-seeds so a wait that appeared while
+ * disconnected never fires. A later change to a different non-`undefined` kind
+ * means a NEW wait just appeared (undefined→kind, or one kind→another) and is
+ * the fresh signal. The `{ kind }` box distinguishes "observed with no
+ * pending" (a record with `kind: undefined`) from "never observed" (no record).
+ * @param prev - the last observed record for the session (undefined = seed).
+ * @param kind - the session's current pendingInteraction status (undefined = none).
+ * @returns the next observed record and whether a new wait just appeared.
+ */
+export declare function pendingAdvance(prev: {
+    kind: PendingKind | undefined;
+} | undefined, kind: PendingKind | undefined): {
+    kind: PendingKind | undefined;
+    fresh: boolean;
+};
+/** A decided pending-interaction notification ready to surface. */
+export interface PendingNotificationPlan {
+    readonly kind: PendingKind;
+    readonly body: string;
+    readonly tag: string;
+}
+/**
+ * Decide one pending-interaction notification, free of any browser read.
+ * @param sessionId - the waiting session.
+ * @param origin - the session's durable origin (subagents are skipped).
+ * @param title - the session's human-facing label (displayTitle).
+ * @param kind - the blocking interaction kind.
+ * @param settings - the live client settings.
+ * @returns the plan, or null when this wait must not notify.
+ */
+export declare function pendingNotificationFor(sessionId: string, origin: string | undefined, title: string | undefined, kind: PendingKind, settings: NotificationSettings): PendingNotificationPlan | null;

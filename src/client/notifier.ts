@@ -3,7 +3,7 @@
  * out for unit tests, while the `Notification` construction stays in the thin
  * runner wired by the plugin body.
  */
-import type { NotificationReason } from '../contract.ts'
+import type { NotificationReason, PendingKind } from '../contract.ts'
 
 /** The reason title key for one turn-end reason. */
 export function titleKey(reason: NotificationReason): 'notify.titleCompleted' | 'notify.titleError' | 'notify.titleAborted' | 'notify.titleBlocked' | 'notify.titleMaxTokens' {
@@ -13,6 +13,15 @@ export function titleKey(reason: NotificationReason): 'notify.titleCompleted' | 
     case 'aborted': return 'notify.titleAborted'
     case 'blocked': return 'notify.titleBlocked'
     case 'max-tokens': return 'notify.titleMaxTokens'
+  }
+}
+
+/** The title key for one pending-interaction kind. */
+export function pendingTitleKey(kind: PendingKind): 'notify.titleApproval' | 'notify.titleQuestion' | 'notify.titlePlanReview' {
+  switch (kind) {
+    case 'approval': return 'notify.titleApproval'
+    case 'question': return 'notify.titleQuestion'
+    case 'plan-review': return 'notify.titlePlanReview'
   }
 }
 
@@ -42,6 +51,11 @@ export function shouldShow(
 /** The grouping tag: one notification slot per session. */
 export function notificationTag(sessionId: string): string {
   return `dsh-notification-${sessionId}`
+}
+
+/** The pending-interaction grouping tag: kept separate so it never replaces a completion notice. */
+export function pendingNotificationTag(sessionId: string): string {
+  return `dsh-notification-pending-${sessionId}`
 }
 
 /** The surface this code may show notifications on (absent in insecure contexts). */

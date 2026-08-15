@@ -3,11 +3,13 @@
  * semantics, and the rule subject. Pure and unit-tested; the runner consumes
  * these against the session list's title and the host `notification` projection.
  */
-import type { NotificationReason, NotificationRule, NotificationSettings } from '../contract.ts';
+import type { NotificationReason, NotificationRule, NotificationSettings, PendingKind } from '../contract.ts';
 /** Map a raw projection reason to a notifiable reason, or undefined for unknown kinds. */
 export declare function asReason(reason: string | undefined): NotificationReason | undefined;
 /** Whether the configured per-outcome switch is on for a reason. */
 export declare function reasonEnabled(settings: NotificationSettings, reason: NotificationReason): boolean;
+/** Whether the configured switch is on for a pending-interaction kind. */
+export declare function pendingReasonEnabled(settings: NotificationSettings, kind: PendingKind): boolean;
 /** The text rules match against: the session title, the reply text, and the tool names. */
 export declare function ruleSubject(title: string | undefined, body: string, tools: readonly string[]): string;
 /** Whether one rule matches its subject. */

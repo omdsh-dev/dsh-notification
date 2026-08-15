@@ -15,6 +15,9 @@ export function defaultNotificationSettings(): NotificationSettings {
     notifyAborted: false,
     notifyBlocked: false,
     notifyMaxTokens: false,
+    notifyApproval: true,
+    notifyQuestion: true,
+    notifyPlanReview: false,
     rules: [],
     requireInteraction: false,
     backgroundOnly: true,
@@ -23,6 +26,9 @@ export function defaultNotificationSettings(): NotificationSettings {
 
 /** The v2 persist key, whose `backgroundOnly` default (false) predates the current default (true). */
 export const V2_PERSIST_KEY = 'dsh-notification.v2'
+
+/** The v3 persist key, whose shape predates the pending-interaction toggles. */
+export const V3_PERSIST_KEY = 'dsh-notification.v3'
 
 /** The storage face the migration needs. */
 export interface SettingsStorage {
@@ -52,13 +58,35 @@ export function migrateV2Settings(storage?: SettingsStorage): NotificationSettin
 }
 
 /**
+ * One-time migration from the v3 settings shape to v4: keep everything the
+ * user saved and layer the new pending-interaction toggles' defaults over it.
+ * The v3 key is consumed on success, so the migration runs at most once.
+ * @param storage - the storage to read/consume (defaults to the global localStorage).
+ * @returns the migrated settings, or undefined when there is no v3 state.
+ */
+export function migrateV3Settings(storage?: SettingsStorage): NotificationSettings | undefined {
+  const target = storage ?? (typeof localStorage === 'undefined' ? undefined : localStorage)
+  if (target === undefined) return undefined
+  try {
+    const raw = target.getItem(V3_PERSIST_KEY)
+    if (raw === null) return undefined
+    target.removeItem(V3_PERSIST_KEY)
+    const saved = JSON.parse(raw) as Partial<NotificationSettings>
+    return { ...defaultNotificationSettings(), ...saved }
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Create the persisted settings store. The persist key carries a shape
- * version: each bump discards nothing — v2 state migrates into the v3 initial
- * state (see {@link migrateV2Settings}).
- * @returns the bare observable backing both the section and the runner.
+ * version: each bump discards nothing — v2 state migrates into v3 (see
+ * {@link migrateV2Settings}) and v3 into v4 (see {@link migrateV3Settings}),
+ * so user preferences survive while new fields gain their defaults.
+ * @returns the bare observable backing both the section and the runners.
  */
 export function createNotificationSettingsStore(): SnapshotStore<NotificationSettings> {
-  return createSnapshotStore<NotificationSettings>(migrateV2Settings() ?? defaultNotificationSettings(), {
-    persist: { name: 'dsh-notification.v3' },
+  return createSnapshotStore<NotificationSettings>(migrateV3Settings() ?? migrateV2Settings() ?? defaultNotificationSettings(), {
+    persist: { name: 'dsh-notification.v4' },
   })
 }

@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { NotificationSettings } from '../src/contract.ts'
-import { notificationFor, projectionAdvance } from '../src/client/runner.ts'
+import { notificationFor, pendingAdvance, pendingNotificationFor, projectionAdvance } from '../src/client/runner.ts'
 
 function settings(overrides: Partial<NotificationSettings> = {}): NotificationSettings {
   return {
@@ -15,6 +15,9 @@ function settings(overrides: Partial<NotificationSettings> = {}): NotificationSe
     notifyAborted: false,
     notifyBlocked: false,
     notifyMaxTokens: false,
+    notifyApproval: true,
+    notifyQuestion: true,
+    notifyPlanReview: false,
     rules: [],
     requireInteraction: false,
     backgroundOnly: true,
@@ -76,5 +79,43 @@ describe('projectionAdvance', () => {
   it('treats an absent projection as turn 0', () => {
     expect(projectionAdvance(undefined, undefined)).toEqual({ nextTurn: 0, fresh: false })
     expect(projectionAdvance(0, { turn: 1, reason: 'completed', body: 'first', tools: [] })).toEqual({ nextTurn: 1, fresh: true })
+  })
+})
+
+describe('pendingAdvance', () => {
+  it('seeds on first observation without firing', () => {
+    expect(pendingAdvance(undefined, 'approval')).toEqual({ kind: 'approval', fresh: false })
+    expect(pendingAdvance(undefined, undefined)).toEqual({ kind: undefined, fresh: false })
+  })
+
+  it('fires only on the undefined → kind edge', () => {
+    expect(pendingAdvance({ kind: undefined }, 'approval')).toEqual({ kind: 'approval', fresh: true })
+    expect(pendingAdvance({ kind: 'approval' }, 'approval')).toEqual({ kind: 'approval', fresh: false })
+    expect(pendingAdvance({ kind: 'approval' }, undefined)).toEqual({ kind: undefined, fresh: false })
+  })
+
+  it('fires when one kind is replaced by another', () => {
+    expect(pendingAdvance({ kind: 'approval' }, 'question')).toEqual({ kind: 'question', fresh: true })
+  })
+})
+
+describe('pendingNotificationFor', () => {
+  it('skips subagent sessions', () => {
+    expect(pendingNotificationFor('s1', 'subagent', 'Deploy', 'approval', settings())).toBeNull()
+  })
+
+  it('plans a notification with the display title as body', () => {
+    expect(pendingNotificationFor('s1', undefined, 'Deploy the app', 'approval', settings()))
+      .toEqual({ kind: 'approval', body: 'Deploy the app', tag: 'dsh-notification-pending-s1' })
+  })
+
+  it('honors the pending-kind toggle', () => {
+    expect(pendingNotificationFor('s1', undefined, 'Deploy', 'plan-review', settings())).toBeNull()
+    expect(pendingNotificationFor('s1', undefined, 'Deploy', 'plan-review', settings({ notifyPlanReview: true })))
+      .toEqual({ kind: 'plan-review', body: 'Deploy', tag: 'dsh-notification-pending-s1' })
+  })
+
+  it('respects the master switch', () => {
+    expect(pendingNotificationFor('s1', undefined, 'Deploy', 'approval', settings({ enabled: false }))).toBeNull()
   })
 })

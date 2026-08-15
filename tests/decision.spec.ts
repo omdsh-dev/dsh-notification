@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { NotificationRule, NotificationSettings } from '../src/contract.ts'
-import { asReason, reasonEnabled, ruleMatches, ruleSubject, rulesAllow, shouldNotify } from '../src/client/decision.ts'
+import { asReason, pendingReasonEnabled, reasonEnabled, ruleMatches, ruleSubject, rulesAllow, shouldNotify } from '../src/client/decision.ts'
 
 function rule(overrides: Partial<NotificationRule> = {}): NotificationRule {
   return { id: 'r1', enabled: true, mode: 'include', pattern: 'deploy', isRegex: false, caseSensitive: false, ...overrides }
@@ -18,6 +18,9 @@ function settings(overrides: Partial<NotificationSettings> = {}): NotificationSe
     notifyAborted: false,
     notifyBlocked: false,
     notifyMaxTokens: false,
+    notifyApproval: true,
+    notifyQuestion: true,
+    notifyPlanReview: false,
     rules: [],
     requireInteraction: false,
     backgroundOnly: true,
@@ -42,6 +45,15 @@ describe('reasonEnabled', () => {
     expect(reasonEnabled(s, 'max-tokens')).toBe(true)
     expect(reasonEnabled(s, 'error')).toBe(false)
     expect(reasonEnabled(s, 'blocked')).toBe(false)
+  })
+})
+
+describe('pendingReasonEnabled', () => {
+  it('maps each pending kind to its configured flag', () => {
+    const s = settings({ notifyApproval: false, notifyPlanReview: true })
+    expect(pendingReasonEnabled(s, 'approval')).toBe(false)
+    expect(pendingReasonEnabled(s, 'question')).toBe(true)
+    expect(pendingReasonEnabled(s, 'plan-review')).toBe(true)
   })
 })
 

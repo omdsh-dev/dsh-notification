@@ -3,7 +3,7 @@
  * permission/background gate, and the per-session grouping tag.
  */
 import { describe, expect, it } from 'vitest'
-import { bodyText, notificationTag, shouldShow, titleKey } from '../src/client/notifier.ts'
+import { bodyText, notificationTag, pendingNotificationTag, pendingTitleKey, shouldShow, titleKey } from '../src/client/notifier.ts'
 
 describe('titleKey', () => {
   it('maps every reason to its title key', () => {
@@ -12,6 +12,14 @@ describe('titleKey', () => {
     expect(titleKey('aborted')).toBe('notify.titleAborted')
     expect(titleKey('blocked')).toBe('notify.titleBlocked')
     expect(titleKey('max-tokens')).toBe('notify.titleMaxTokens')
+  })
+})
+
+describe('pendingTitleKey', () => {
+  it('maps every pending kind to its title key', () => {
+    expect(pendingTitleKey('approval')).toBe('notify.titleApproval')
+    expect(pendingTitleKey('question')).toBe('notify.titleQuestion')
+    expect(pendingTitleKey('plan-review')).toBe('notify.titlePlanReview')
   })
 })
 
@@ -47,5 +55,11 @@ describe('shouldShow', () => {
 describe('notificationTag', () => {
   it('namespaces the tag per session', () => {
     expect(notificationTag('session-1')).toBe('dsh-notification-session-1')
+  })
+})
+
+describe('pendingNotificationTag', () => {
+  it('keeps pending tags separate from completion tags', () => {
+    expect(pendingNotificationTag('session-1')).toBe('dsh-notification-pending-session-1')
   })
 })

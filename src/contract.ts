@@ -12,6 +12,15 @@ import type {} from '@deepseek-ai/dsh-session-projection/types'
 export type NotificationReason = 'completed' | 'error' | 'aborted' | 'blocked' | 'max-tokens'
 
 /**
+ * A blocking user interaction a session can wait on. Mirrors the client session
+ * list's `pendingInteraction` status (the same fact that drives the sidebar's
+ * amber "needs you" dot): `approval` for a pending permission decision,
+ * `question` for an unanswered `ask_user_question`, and `plan-review` for a
+ * plan awaiting review.
+ */
+export type PendingKind = 'approval' | 'question' | 'plan-review'
+
+/**
  * The host projection's wire payload: a bounded summary of the session's last
  * completed turn. The client reads this key off the session list's
  * `projectionValues` when a session's completion reminder arms.
@@ -52,6 +61,12 @@ export interface NotificationSettings {
   readonly notifyAborted: boolean
   readonly notifyBlocked: boolean
   readonly notifyMaxTokens: boolean
+  /** Notify when a session waits for the user's approval. */
+  readonly notifyApproval: boolean
+  /** Notify when a session waits for the user to answer a question. */
+  readonly notifyQuestion: boolean
+  /** Notify when a session waits for the user to review a plan. */
+  readonly notifyPlanReview: boolean
   /** Ordered include/exclude filters over the session title, reply text, and tool names. */
   readonly rules: NotificationRule[]
   /** When true, the browser keeps the notification until the user dismisses it. */
