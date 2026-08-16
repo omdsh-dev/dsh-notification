@@ -4,7 +4,7 @@
  * migration that forces `backgroundOnly` to the current default.
  */
 import { describe, expect, it } from 'vitest'
-import { V2_PERSIST_KEY, defaultNotificationSettings, migrateV2Settings, type SettingsStorage } from '../src/client/store.ts'
+import { V2_PERSIST_KEY, V3_PERSIST_KEY, defaultNotificationSettings, migrateV2Settings, migrateV3Settings, type SettingsStorage } from '../src/client/store.ts'
 
 function fakeStorage(entries: Record<string, string>): SettingsStorage {
   const store = new Map(Object.entries(entries))
@@ -23,10 +23,31 @@ describe('defaultNotificationSettings', () => {
       notifyAborted: false,
       notifyBlocked: false,
       notifyMaxTokens: false,
+      notifyApproval: true,
+      notifyQuestion: true,
+      notifyPlanReview: false,
       rules: [],
       requireInteraction: false,
       backgroundOnly: true,
     })
+  })
+})
+
+describe('migrateV3Settings', () => {
+  it('preserves old settings and adds pending defaults', () => {
+    const storage = fakeStorage({ [V3_PERSIST_KEY]: JSON.stringify({ enabled: false, notifyError: false }) })
+    expect(migrateV3Settings(storage)).toMatchObject({
+      enabled: false,
+      notifyError: false,
+      notifyApproval: true,
+      notifyQuestion: true,
+      notifyPlanReview: false,
+    })
+    expect(storage.getItem(V3_PERSIST_KEY)).toBeNull()
+  })
+
+  it('returns undefined without v3 state', () => {
+    expect(migrateV3Settings(fakeStorage({}))).toBeUndefined()
   })
 })
 

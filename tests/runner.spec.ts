@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { NotificationSettings } from '../src/contract.ts'
-import { notificationFor, projectionAdvance } from '../src/client/runner.ts'
+import { notificationFor, pendingAdvance, pendingNotificationFor, projectionAdvance } from '../src/client/runner.ts'
 
 function settings(overrides: Partial<NotificationSettings> = {}): NotificationSettings {
   return {
@@ -15,6 +15,9 @@ function settings(overrides: Partial<NotificationSettings> = {}): NotificationSe
     notifyAborted: false,
     notifyBlocked: false,
     notifyMaxTokens: false,
+    notifyApproval: true,
+    notifyQuestion: true,
+    notifyPlanReview: false,
     rules: [],
     requireInteraction: false,
     backgroundOnly: true,
@@ -30,12 +33,12 @@ describe('notificationFor', () => {
 
   it('uses the projection reason and body when present', () => {
     const plan = notificationFor('s1', undefined, 'Deploy', { turn: 3, reason: 'error', body: 'boom', tools: ['bash'] }, settings())
-    expect(plan).toEqual({ reason: 'error', body: 'boom', tag: 'dsh-notification-s1' })
+    expect(plan).toEqual({ reason: 'error', body: 'boom', tag: 'dsh-notification-s1-3' })
   })
 
   it('falls back to a generic completion when the projection has not landed', () => {
     const plan = notificationFor('s1', undefined, 'Deploy the app', undefined, settings())
-    expect(plan).toEqual({ reason: 'completed', body: 'Deploy the app', tag: 'dsh-notification-s1' })
+    expect(plan).toEqual({ reason: 'completed', body: 'Deploy the app', tag: 'dsh-notification-s1-0' })
   })
 
   it('skips unknown projection reasons', () => {
@@ -59,6 +62,33 @@ describe('notificationFor', () => {
   it('respects the master switch', () => {
     const plan = notificationFor('s1', undefined, 'title', { turn: 1, reason: 'completed', body: 'done', tools: [] }, settings({ enabled: false }))
     expect(plan).toBeNull()
+  })
+})
+
+describe('pendingAdvance', () => {
+  it('seeds current state and detects a later wait', () => {
+    expect(pendingAdvance(undefined, 'question')).toEqual({ kind: 'question', fresh: false })
+    expect(pendingAdvance({ kind: undefined }, 'question')).toEqual({ kind: 'question', fresh: true })
+    expect(pendingAdvance({ kind: 'question' }, undefined)).toEqual({ kind: undefined, fresh: false })
+  })
+
+  it('detects a different pending kind', () => {
+    expect(pendingAdvance({ kind: 'approval' }, 'plan-review')).toEqual({ kind: 'plan-review', fresh: true })
+  })
+})
+
+describe('pendingNotificationFor', () => {
+  it('uses a unique sequence tag and the session title as body', () => {
+    expect(pendingNotificationFor('s1', undefined, 'Deploy', 'approval', 2, settings()))
+      .toEqual({ kind: 'approval', body: 'Deploy', tag: 'dsh-notification-pending-s1-2' })
+  })
+
+  it('skips subagents, disabled kinds, and non-matching rules', () => {
+    expect(pendingNotificationFor('s1', 'subagent', 'Deploy', 'approval', 1, settings())).toBeNull()
+    expect(pendingNotificationFor('s1', undefined, 'Deploy', 'plan-review', 1, settings())).toBeNull()
+    expect(pendingNotificationFor('s1', undefined, 'Deploy', 'approval', 1, settings({
+      rules: [{ id: 'r', enabled: true, mode: 'include', pattern: 'review', isRegex: false, caseSensitive: false }],
+    }))).toBeNull()
   })
 })
 

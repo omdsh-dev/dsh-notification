@@ -3,7 +3,7 @@
  * semantics, and the rule subject. Pure and unit-tested; the runner consumes
  * these against the session list's title and the host `notification` projection.
  */
-import type { NotificationReason, NotificationRule, NotificationSettings } from '../contract.ts'
+import type { NotificationReason, NotificationRule, NotificationSettings, PendingKind } from '../contract.ts'
 
 /** Map a raw projection reason to a notifiable reason, or undefined for unknown kinds. */
 export function asReason(reason: string | undefined): NotificationReason | undefined {
@@ -27,6 +27,15 @@ export function reasonEnabled(settings: NotificationSettings, reason: Notificati
     case 'aborted': return settings.notifyAborted
     case 'blocked': return settings.notifyBlocked
     case 'max-tokens': return settings.notifyMaxTokens
+  }
+}
+
+/** Whether the configured switch is on for a pending interaction. */
+export function pendingReasonEnabled(settings: NotificationSettings, kind: PendingKind): boolean {
+  switch (kind) {
+    case 'approval': return settings.notifyApproval
+    case 'question': return settings.notifyQuestion
+    case 'plan-review': return settings.notifyPlanReview
   }
 }
 

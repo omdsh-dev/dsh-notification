@@ -12,13 +12,13 @@ import type { ClientContext, SessionListState, SnapshotStore } from '@deepseek-a
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: the settings.section SlotMap entry.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type { NotificationSettings } from '../contract.ts'
+import type { NotificationSettings, PendingKind } from '../contract.ts'
 import { NotificationSettingsSection, type NotificationSectionInjected } from './SettingsSection.tsx'
 import { NS, en, zh } from './locales.ts'
 import { adoptStyles } from './styles.ts'
 import { createNotificationSettingsStore } from './store.ts'
-import { notificationFor, projectionAdvance } from './runner.ts'
-import { bodyText, notificationsApi, shouldShow, titleKey } from './notifier.ts'
+import { notificationFor, pendingAdvance, pendingNotificationFor, projectionAdvance } from './runner.ts'
+import { bodyText, notificationsApi, pendingTitleKey, shouldShow, titleKey } from './notifier.ts'
 
 /** Required services: the session list, slots, and locale. */
 export const inject = ['sessions', 'slots', 'locale']
@@ -28,13 +28,15 @@ interface SessionsListFace {
   readonly list: { getSnapshot(): SessionListState; subscribe(listener: () => void): () => void }
 }
 
+type SessionId = SessionListState['ids'][number]
+
 /**
  * Compose the notification surface.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
   adoptStyles()
-  console.info('[dsh-notification] bundle loaded (edge trigger, settings v2)')
+  console.info('[dsh-notification] bundle loaded (completion and pending-interaction notifications, settings v4)')
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-notification: dictionaries')
 
   const t = ctx.locale.bind(NS)
@@ -111,6 +113,66 @@ export function apply(ctx: ClientContext): void {
     })
     return () => { off(); stopReset() }
   }, 'dsh-notification: completion runner')
+
+  // Pending-interaction runner: seed from the current snapshot before
+  // subscribing so a newly observed question is not mistaken for startup
+  // history. Re-seed on reconnect for the same reason: a wait that existed
+  // while disconnected must not generate a stale notification.
+  ctx.effect(() => {
+    const observed = new Map<SessionId, { kind: PendingKind | undefined }>()
+    const sequences = new Map<SessionId, number>()
+    const seed = (state: SessionListState): void => {
+      const live = new Set(state.ids)
+      for (const id of state.ids) observed.set(id, { kind: state.byId[id].pendingInteraction })
+      for (const id of [...observed.keys()]) {
+        if (!live.has(id)) {
+          observed.delete(id)
+          sequences.delete(id)
+        }
+      }
+    }
+    seed(sessions.list.getSnapshot())
+    const reseed = (): void => {
+      observed.clear()
+      seed(sessions.list.getSnapshot())
+    }
+    const stopReset = ctx.on('connection/reset', reseed)
+    const off = sessions.list.subscribe(() => {
+      const state = sessions.list.getSnapshot()
+      const current = settings.getSnapshot()
+      for (const id of state.ids) {
+        const summary = state.byId[id]
+        const kind: PendingKind | undefined = summary.pendingInteraction
+        const previous = observed.get(id)
+        const next = pendingAdvance(previous, kind)
+        observed.set(id, { kind: next.kind })
+        if (!next.fresh || next.kind === undefined) continue
+        const sequence = (sequences.get(id) ?? 0) + 1
+        sequences.set(id, sequence)
+        const plan = pendingNotificationFor(
+          summary.id,
+          summary.origin,
+          summary.displayTitle,
+          next.kind,
+          sequence,
+          current,
+        )
+        if (plan === null) continue
+        const permission = notificationsApi()?.permission ?? 'denied'
+        const showIt = shouldShow(permission, current.backgroundOnly, document.hidden, id, state.current)
+        if (showIt) {
+          show(
+            t(pendingTitleKey(plan.kind)),
+            bodyText(plan.body, t('notify.pendingBody')),
+            plan.tag,
+            current.requireInteraction,
+          )
+        }
+      }
+      seed(state)
+    })
+    return () => { off(); stopReset() }
+  }, 'dsh-notification: pending runner')
 
   // The settings section: master switch, permission card, outcome toggles, rules, advanced.
   ctx.slots.inject('settings.section', () => ctx.slots.register({

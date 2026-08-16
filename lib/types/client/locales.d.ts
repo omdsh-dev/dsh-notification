@@ -14,6 +14,8 @@ export declare const zh: {
     'settings.permission.granted': string;
     'settings.permission.denied': string;
     'settings.permission.default': string;
+    'settings.permission.defaultHint': string;
+    'settings.permission.deniedHint': string;
     'settings.permission.request': string;
     'settings.permission.test': string;
     'settings.when.title': string;
@@ -23,6 +25,11 @@ export declare const zh: {
     'settings.when.aborted': string;
     'settings.when.blocked': string;
     'settings.when.maxTokens': string;
+    'settings.pending.title': string;
+    'settings.pending.subtitle': string;
+    'settings.pending.approval': string;
+    'settings.pending.question': string;
+    'settings.pending.planReview': string;
     'settings.rules.title': string;
     'settings.rules.subtitle': string;
     'settings.rules.empty': string;
@@ -48,6 +55,10 @@ export declare const zh: {
     'notify.titleAborted': string;
     'notify.titleBlocked': string;
     'notify.titleMaxTokens': string;
+    'notify.titleApproval': string;
+    'notify.titleQuestion': string;
+    'notify.titlePlanReview': string;
+    'notify.pendingBody': string;
     'notify.emptyBody': string;
     'notify.testTitle': string;
     'notify.testBody': string;
@@ -66,6 +77,8 @@ export declare const en: {
     'settings.permission.granted': string;
     'settings.permission.denied': string;
     'settings.permission.default': string;
+    'settings.permission.defaultHint': string;
+    'settings.permission.deniedHint': string;
     'settings.permission.request': string;
     'settings.permission.test': string;
     'settings.when.title': string;
@@ -75,6 +88,11 @@ export declare const en: {
     'settings.when.aborted': string;
     'settings.when.blocked': string;
     'settings.when.maxTokens': string;
+    'settings.pending.title': string;
+    'settings.pending.subtitle': string;
+    'settings.pending.approval': string;
+    'settings.pending.question': string;
+    'settings.pending.planReview': string;
     'settings.rules.title': string;
     'settings.rules.subtitle': string;
     'settings.rules.empty': string;
@@ -100,6 +118,10 @@ export declare const en: {
     'notify.titleAborted': string;
     'notify.titleBlocked': string;
     'notify.titleMaxTokens': string;
+    'notify.titleApproval': string;
+    'notify.titleQuestion': string;
+    'notify.titlePlanReview': string;
+    'notify.pendingBody': string;
     'notify.emptyBody': string;
     'notify.testTitle': string;
     'notify.testBody': string;

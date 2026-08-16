@@ -6,7 +6,7 @@
  * reads (permission, visibility) and the Notification construction stay in the
  * plugin body.
  */
-import type { NotificationProjectionValue, NotificationReason, NotificationSettings } from '../contract.ts';
+import type { NotificationProjectionValue, NotificationReason, NotificationSettings, PendingKind } from '../contract.ts';
 /**
  * Fold one session's projection-turn observation: the first observation seeds
  * the baseline (never fires), and any later advance means the host projection
@@ -38,3 +38,18 @@ export interface NotificationPlan {
  * @returns the plan, or null when this completion must not notify.
  */
 export declare function notificationFor(sessionId: string, origin: string | undefined, title: string | undefined, projection: NotificationProjectionValue | undefined, settings: NotificationSettings): NotificationPlan | null;
+/** Fold one session's pending-interaction state and detect a fresh wait. */
+export declare function pendingAdvance(prev: {
+    kind: PendingKind | undefined;
+} | undefined, kind: PendingKind | undefined): {
+    kind: PendingKind | undefined;
+    fresh: boolean;
+};
+/** A decided pending-interaction notification. */
+export interface PendingNotificationPlan {
+    readonly kind: PendingKind;
+    readonly body: string;
+    readonly tag: string;
+}
+/** Decide one pending interaction without reading browser state. */
+export declare function pendingNotificationFor(sessionId: string, origin: string | undefined, title: string | undefined, kind: PendingKind, sequence: number, settings: NotificationSettings): PendingNotificationPlan | null;

@@ -17,6 +17,7 @@ import { emptyRule, firstRuleError, patchRule, removeRule } from './rules.ts'
 
 /** The per-outcome toggle fields. */
 type NotifyField = 'notifyCompleted' | 'notifyError' | 'notifyAborted' | 'notifyBlocked' | 'notifyMaxTokens'
+type PendingField = 'notifyApproval' | 'notifyQuestion' | 'notifyPlanReview'
 
 /** Injected business face: the live settings store (bound to `useSettings`), the write verb, and the permission/test verbs. */
 export interface NotificationSectionInjected {
@@ -38,8 +39,14 @@ const OUTCOMES: ReadonlyArray<{ field: NotifyField; key: NotificationKey; defaul
   { field: 'notifyMaxTokens', key: 'settings.when.maxTokens', defaultValue: false },
 ]
 
+const PENDING: ReadonlyArray<{ field: PendingField; key: NotificationKey; defaultValue: boolean }> = [
+  { field: 'notifyApproval', key: 'settings.pending.approval', defaultValue: true },
+  { field: 'notifyQuestion', key: 'settings.pending.question', defaultValue: true },
+  { field: 'notifyPlanReview', key: 'settings.pending.planReview', defaultValue: false },
+]
+
 /** A single-outcome-toggle patch. */
-function notifyPatch(field: NotifyField, checked: boolean): Partial<NotificationSettings> {
+function notifyPatch(field: NotifyField | PendingField, checked: boolean): Partial<NotificationSettings> {
   return { [field]: checked } as Partial<NotificationSettings>
 }
 
@@ -212,6 +219,23 @@ export function NotificationSettingsSection({ useSettings, set, requestPermissio
           desc={t('settings.enabledDesc')}
           onChange={(checked) => { set({ enabled: checked }) }}
         />
+      </div>
+
+      <div className="dsh_notification_card">
+        <div>
+          <div className="dsh_notification_cardTitle">{t('settings.pending.title')}</div>
+          <div className="dsh_notification_cardDesc">{t('settings.pending.subtitle')}</div>
+        </div>
+        <div className="dsh_notification_grid">
+          {PENDING.map(({ field, key, defaultValue }) => (
+            <Toggle
+              key={field}
+              defaultChecked={(settings?.[field] as boolean | undefined) ?? defaultValue}
+              label={t(key)}
+              onChange={(checked) => { set(notifyPatch(field, checked)) }}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="dsh_notification_card">

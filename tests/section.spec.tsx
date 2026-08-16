@@ -24,6 +24,9 @@ function fullSettings(overrides: Partial<NotificationSettings> = {}): Notificati
     notifyAborted: false,
     notifyBlocked: false,
     notifyMaxTokens: false,
+    notifyApproval: true,
+    notifyQuestion: true,
+    notifyPlanReview: false,
     rules: [],
     requireInteraction: false,
     backgroundOnly: true,
@@ -94,6 +97,16 @@ describe('NotificationSettingsSection', () => {
     expect(aborted.checked).toBe(false)
     aborted.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(set).toHaveBeenCalledWith({ notifyAborted: true })
+    root.unmount()
+  })
+
+  it('renders pending toggles and routes their writes', () => {
+    const set = vi.fn()
+    const { root, container } = mount(<NotificationSettingsSection {...props({ set })} />)
+    const question = checkboxForLabel(container, zh['settings.pending.question'])
+    expect(question.checked).toBe(true)
+    question.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(set).toHaveBeenCalledWith({ notifyQuestion: false })
     root.unmount()
   })
 

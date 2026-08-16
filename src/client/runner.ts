@@ -6,9 +6,9 @@
  * reads (permission, visibility) and the Notification construction stay in the
  * plugin body.
  */
-import type { NotificationProjectionValue, NotificationReason, NotificationSettings } from '../contract.ts'
-import { asReason, ruleSubject, shouldNotify } from './decision.ts'
-import { notificationTag } from './notifier.ts'
+import type { NotificationProjectionValue, NotificationReason, NotificationSettings, PendingKind } from '../contract.ts'
+import { asReason, pendingReasonEnabled, ruleSubject, rulesAllow, shouldNotify } from './decision.ts'
+import { notificationTag, pendingNotificationTag } from './notifier.ts'
 
 /**
  * Fold one session's projection-turn observation: the first observation seeds
@@ -66,4 +66,35 @@ export function notificationFor(
     body: projection?.body ?? title ?? '',
     tag: notificationTag(sessionId, projection?.turn ?? 0),
   }
+}
+
+/** Fold one session's pending-interaction state and detect a fresh wait. */
+export function pendingAdvance(
+  prev: { kind: PendingKind | undefined } | undefined,
+  kind: PendingKind | undefined,
+): { kind: PendingKind | undefined; fresh: boolean } {
+  if (prev === undefined) return { kind, fresh: false }
+  return { kind, fresh: kind !== undefined && kind !== prev.kind }
+}
+
+/** A decided pending-interaction notification. */
+export interface PendingNotificationPlan {
+  readonly kind: PendingKind
+  readonly body: string
+  readonly tag: string
+}
+
+/** Decide one pending interaction without reading browser state. */
+export function pendingNotificationFor(
+  sessionId: string,
+  origin: string | undefined,
+  title: string | undefined,
+  kind: PendingKind,
+  sequence: number,
+  settings: NotificationSettings,
+): PendingNotificationPlan | null {
+  if (origin === 'subagent') return null
+  if (!settings.enabled || !pendingReasonEnabled(settings, kind)) return null
+  if (!rulesAllow(settings, ruleSubject(title, '', []))) return null
+  return { kind, body: title?.trim() ?? '', tag: pendingNotificationTag(sessionId, sequence) }
 }

@@ -15,6 +15,9 @@ export function defaultNotificationSettings(): NotificationSettings {
     notifyAborted: false,
     notifyBlocked: false,
     notifyMaxTokens: false,
+    notifyApproval: true,
+    notifyQuestion: true,
+    notifyPlanReview: false,
     rules: [],
     requireInteraction: false,
     backgroundOnly: true,
@@ -23,6 +26,9 @@ export function defaultNotificationSettings(): NotificationSettings {
 
 /** The v2 persist key, whose `backgroundOnly` default (false) predates the current default (true). */
 export const V2_PERSIST_KEY = 'dsh-notification.v2'
+
+/** The v3 persist key, before pending-interaction preferences were added. */
+export const V3_PERSIST_KEY = 'dsh-notification.v3'
 
 /** The storage face the migration needs. */
 export interface SettingsStorage {
@@ -51,6 +57,20 @@ export function migrateV2Settings(storage?: SettingsStorage): NotificationSettin
   }
 }
 
+/** Migrate the v3 shape while layering defaults for pending interactions. */
+export function migrateV3Settings(storage?: SettingsStorage): NotificationSettings | undefined {
+  const target = storage ?? (typeof localStorage === 'undefined' ? undefined : localStorage)
+  if (target === undefined) return undefined
+  try {
+    const raw = target.getItem(V3_PERSIST_KEY)
+    if (raw === null) return undefined
+    target.removeItem(V3_PERSIST_KEY)
+    return { ...defaultNotificationSettings(), ...(JSON.parse(raw) as Partial<NotificationSettings>) }
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Create the persisted settings store. The persist key carries a shape
  * version: each bump discards nothing — v2 state migrates into the v3 initial
@@ -58,7 +78,7 @@ export function migrateV2Settings(storage?: SettingsStorage): NotificationSettin
  * @returns the bare observable backing both the section and the runner.
  */
 export function createNotificationSettingsStore(): SnapshotStore<NotificationSettings> {
-  return createSnapshotStore<NotificationSettings>(migrateV2Settings() ?? defaultNotificationSettings(), {
-    persist: { name: 'dsh-notification.v3' },
+  return createSnapshotStore<NotificationSettings>(migrateV3Settings() ?? migrateV2Settings() ?? defaultNotificationSettings(), {
+    persist: { name: 'dsh-notification.v4' },
   })
 }

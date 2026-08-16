@@ -18,6 +18,9 @@ function settings(overrides: Partial<NotificationSettings> = {}): NotificationSe
     notifyAborted: false,
     notifyBlocked: false,
     notifyMaxTokens: false,
+    notifyApproval: true,
+    notifyQuestion: true,
+    notifyPlanReview: false,
     rules: [],
     requireInteraction: false,
     backgroundOnly: true,
@@ -98,4 +101,3 @@ describe('shouldNotify', () => {
     expect(shouldNotify(settings(), 'completed', 'done')).toBe(true)
   })
 })
-

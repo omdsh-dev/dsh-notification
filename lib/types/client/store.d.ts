@@ -9,6 +9,8 @@ import type { NotificationSettings } from '../contract.ts';
 export declare function defaultNotificationSettings(): NotificationSettings;
 /** The v2 persist key, whose `backgroundOnly` default (false) predates the current default (true). */
 export declare const V2_PERSIST_KEY = "dsh-notification.v2";
+/** The v3 persist key, before pending-interaction preferences were added. */
+export declare const V3_PERSIST_KEY = "dsh-notification.v3";
 /** The storage face the migration needs. */
 export interface SettingsStorage {
     getItem(key: string): string | null;
@@ -22,6 +24,8 @@ export interface SettingsStorage {
  * @returns the migrated settings, or undefined when there is no v2 state.
  */
 export declare function migrateV2Settings(storage?: SettingsStorage): NotificationSettings | undefined;
+/** Migrate the v3 shape while layering defaults for pending interactions. */
+export declare function migrateV3Settings(storage?: SettingsStorage): NotificationSettings | undefined;
 /**
  * Create the persisted settings store. The persist key carries a shape
  * version: each bump discards nothing — v2 state migrates into the v3 initial
