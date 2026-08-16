@@ -7,7 +7,7 @@
  * a local draft persisted as one array on save, so an in-progress
  * (empty-pattern) rule never reaches the store.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { PropsLocale, PropsRuntime, InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { NotificationRule, NotificationSettings } from '../contract.ts'
@@ -132,8 +132,25 @@ function RuleRow(props: {
 export function NotificationSettingsSection({ useSettings, set, requestPermission, sendTest, t }: NotificationSectionProps) {
   const settings = useSettings(snapshot => snapshot)
   const [permission, setPermission] = useState<NotificationPermission>(() => notificationsApi()?.permission ?? 'denied')
+  const [permissionHint, setPermissionHint] = useState<NotificationKey | null>(null)
   const [draft, setDraft] = useState<NotificationRule[] | null>(null)
   const [focusedRuleId, setFocusedRuleId] = useState<string | null>(null)
+
+  // The browser permission can change outside this section (address-bar site
+  // settings, a prompt granted elsewhere). The captured snapshot goes stale,
+  // so re-read it on mount, on window focus, and on visibility changes.
+  useEffect(() => {
+    const refresh = (): void => {
+      setPermission(notificationsApi()?.permission ?? 'denied')
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [])
 
   const durable = settings?.rules ?? []
   const rules = draft ?? durable
@@ -156,6 +173,24 @@ export function NotificationSettingsSection({ useSettings, set, requestPermissio
   }
   const onRequestPermission = async (): Promise<void> => {
     setPermission(await requestPermission())
+    setPermissionHint(null)
+  }
+
+  // The test button never silently no-ops: it re-checks the live permission at
+  // click time, requests it when missing, and always explains why a test could
+  // not be sent instead of being a disabled dead button.
+  const onClickTest = async (): Promise<void> => {
+    let current = notificationsApi()?.permission ?? 'denied'
+    if (current !== 'granted') {
+      current = await requestPermission()
+      setPermission(current)
+    }
+    if (current !== 'granted') {
+      setPermissionHint(current === 'denied' ? 'settings.permission.deniedHint' : 'settings.permission.defaultHint')
+      return
+    }
+    setPermissionHint(null)
+    sendTest()
   }
 
   const permissionText = t(`settings.permission.${permission}`)
@@ -192,12 +227,12 @@ export function NotificationSettingsSection({ useSettings, set, requestPermissio
           <button
             type="button"
             className="dsh_notification_button dsh_notification_buttonPrimary"
-            disabled={permission !== 'granted'}
-            onClick={sendTest}
+            onClick={() => { void onClickTest() }}
           >
             {t('settings.permission.test')}
           </button>
         </div>
+        {permissionHint === null ? null : <span className="dsh_notification_error">{t(permissionHint)}</span>}
       </div>
 
       <div className="dsh_notification_card">
