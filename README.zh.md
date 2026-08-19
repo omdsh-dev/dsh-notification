@@ -14,7 +14,7 @@ client: 会话列表完成提醒（实时、去重）+ 持久化设置
 ## 安装
 
 ```sh
-dsh plugin --profile web add https://github.com/omdsh-dev/dsh-notification/archive/refs/tags/v0.1.2.tar.gz
+dsh plugin --profile web add https://github.com/omdsh-dev/dsh-notification/archive/refs/tags/v0.1.3.tar.gz
 ```
 
 随后重启 web 服务以加载 host 半部分与新的 client bundle。默认的 `dsh web` profile 已包含所需 client 组合（会话列表、设置外壳、locale）。

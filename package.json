@@ -1,7 +1,7 @@
 {
   "name": "dsh-notification",
   "description": "Browser desktop notifications when the DeepSeek Harness finishes a turn: configurable per-outcome toggles and include/exclude keyword rules, shown through the browser Notification API.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
