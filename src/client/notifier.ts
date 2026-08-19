@@ -68,3 +68,25 @@ export function pendingNotificationTag(sessionId: string, sequence: number): str
 export function notificationsApi(): typeof Notification | undefined {
   return typeof Notification === 'undefined' ? undefined : Notification
 }
+
+/** The result of asking the browser to construct one system notification. */
+export type NotificationCreationResult =
+  | { readonly ok: true; readonly notification: Notification }
+  | { readonly ok: false; readonly message: string }
+
+/** Construct one notification without allowing browser failures to disappear silently. */
+export function createBrowserNotification(
+  api: typeof Notification | undefined,
+  title: string,
+  options: NotificationOptions,
+): NotificationCreationResult {
+  if (api === undefined) return { ok: false, message: 'The Notification API is unavailable in this browser context.' }
+  if (api.permission !== 'granted') return { ok: false, message: 'Notification permission is not granted.' }
+  try {
+    return { ok: true, notification: new api(title, options) }
+  } catch (error) {
+    /* v8 ignore next -- browsers throw Error objects for constructor failures. */
+    const message = error instanceof Error ? error.message : String(error)
+    return { ok: false, message }
+  }
+}

@@ -18,7 +18,15 @@ import { NS, en, zh } from './locales.ts'
 import { adoptStyles } from './styles.ts'
 import { createNotificationSettingsStore } from './store.ts'
 import { notificationFor, pendingAdvance, pendingNotificationFor, projectionAdvance } from './runner.ts'
-import { bodyText, notificationsApi, pendingTitleKey, shouldShow, titleKey } from './notifier.ts'
+import {
+  bodyText,
+  createBrowserNotification,
+  notificationsApi,
+  pendingTitleKey,
+  shouldShow,
+  titleKey,
+  type NotificationCreationResult,
+} from './notifier.ts'
 
 /** Required services: the session list, slots, and locale. */
 export const inject = ['sessions', 'slots', 'locale']
@@ -52,18 +60,24 @@ export function apply(ctx: ClientContext): void {
   const requestPermission = (): Promise<NotificationPermission> =>
     notificationsApi()?.requestPermission() ?? Promise.resolve<NotificationPermission>('denied')
 
-  const show = (title: string, body: string, tag: string, requireInteraction: boolean): void => {
-    const api = notificationsApi()
-    if (api === undefined || api.permission !== 'granted') return
-    const notification = new api(title, { body, tag, requireInteraction })
-    notification.onclick = () => { window.focus() }
+  const show = (title: string, body: string, tag: string, requireInteraction: boolean): NotificationCreationResult => {
+    const result = createBrowserNotification(notificationsApi(), title, { body, tag, requireInteraction })
+    if (!result.ok) {
+      console.error(`[dsh-notification] notification creation failed: ${result.message}`)
+      return result
+    }
+    result.notification.onclick = () => { window.focus() }
+    result.notification.onerror = () => {
+      console.error('[dsh-notification] the browser reported a notification delivery error')
+    }
+    return result
   }
-  const sendTest = (): void => {
+  const sendTest = (): NotificationCreationResult => {
     // A unique tag per click: the browser replaces same-tag notifications, and a
     // stale same-tag entry lingering in the Windows notification center silently
     // swallows every later notification with that tag. A fresh tag per test
     // guarantees the toast always shows.
-    show(t('notify.testTitle'), t('notify.testBody'), `dsh-notification-test-${Date.now()}`, false)
+    return show(t('notify.testTitle'), t('notify.testBody'), `dsh-notification-test-${Date.now()}`, false)
   }
 
   // Completion runner: the host projection's turn is monotonic per session,

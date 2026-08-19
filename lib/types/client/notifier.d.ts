@@ -28,3 +28,13 @@ export declare function notificationTag(sessionId: string, turn: number): string
 export declare function pendingNotificationTag(sessionId: string, sequence: number): string;
 /** The surface this code may show notifications on (absent in insecure contexts). */
 export declare function notificationsApi(): typeof Notification | undefined;
+/** The result of asking the browser to construct one system notification. */
+export type NotificationCreationResult = {
+    readonly ok: true;
+    readonly notification: Notification;
+} | {
+    readonly ok: false;
+    readonly message: string;
+};
+/** Construct one notification without allowing browser failures to disappear silently. */
+export declare function createBrowserNotification(api: typeof Notification | undefined, title: string, options: NotificationOptions): NotificationCreationResult;
