@@ -9,12 +9,13 @@ import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
 import { NotificationSettingsSection, type NotificationSectionProps } from '../src/client/SettingsSection.tsx'
-import { zh } from '../src/client/locales.ts'
+import { fmt, zh } from '../src/client/locales.ts'
+import type { NotificationCreationResult } from '../src/client/notifier.ts'
 import type { NotificationSettings } from '../src/contract.ts'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = false
 
-const t = (key: string): string => zh[key] ?? key
+const t = (key: string, params?: Record<string, string>): string => fmt(zh[key] ?? key, params)
 
 function fullSettings(overrides: Partial<NotificationSettings> = {}): NotificationSettings {
   return {
@@ -34,13 +35,18 @@ function fullSettings(overrides: Partial<NotificationSettings> = {}): Notificati
   }
 }
 
-function props(over: { settings?: NotificationSettings; set?: (patch: Partial<NotificationSettings>) => void } = {}): NotificationSectionProps {
+function props(over: {
+  settings?: NotificationSettings
+  set?: (patch: Partial<NotificationSettings>) => void
+  requestPermission?: () => Promise<NotificationPermission>
+  sendTest?: () => NotificationCreationResult
+} = {}): NotificationSectionProps {
   const stub = {
     useSettings: (selector: (snapshot: NotificationSettings) => unknown) =>
       selector(over.settings ?? fullSettings()),
     set: over.set ?? (() => {}),
-    requestPermission: async () => 'granted' as NotificationPermission,
-    sendTest: () => {},
+    requestPermission: over.requestPermission ?? (async () => 'granted' as NotificationPermission),
+    sendTest: over.sendTest ?? (() => ({ ok: true, notification: {} as Notification })),
     t,
   }
   return stub as unknown as NotificationSectionProps
@@ -107,6 +113,27 @@ describe('NotificationSettingsSection', () => {
     expect(question.checked).toBe(true)
     question.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(set).toHaveBeenCalledWith({ notifyQuestion: false })
+    root.unmount()
+  })
+
+  it('confirms that a test notification request was created', async () => {
+    const sendTest = vi.fn(() => ({ ok: true as const, notification: {} as Notification }))
+    const { root, container } = mount(<NotificationSettingsSection {...props({ sendTest })} />)
+    buttonByText(container, zh['settings.permission.test']).click()
+    await Promise.resolve()
+    flushSync(() => {})
+    expect(sendTest).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain(zh['settings.permission.testSent'])
+    root.unmount()
+  })
+
+  it('shows a browser notification constructor failure', async () => {
+    const sendTest = vi.fn(() => ({ ok: false as const, message: 'system notifications unavailable' }))
+    const { root, container } = mount(<NotificationSettingsSection {...props({ sendTest })} />)
+    buttonByText(container, zh['settings.permission.test']).click()
+    await Promise.resolve()
+    flushSync(() => {})
+    expect(container.textContent).toContain('浏览器无法创建测试通知：system notifications unavailable')
     root.unmount()
   })
 

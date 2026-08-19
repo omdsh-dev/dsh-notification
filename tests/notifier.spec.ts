@@ -3,7 +3,15 @@
  * permission/background gate, and the per-session grouping tag.
  */
 import { describe, expect, it } from 'vitest'
-import { bodyText, notificationTag, pendingNotificationTag, pendingTitleKey, shouldShow, titleKey } from '../src/client/notifier.ts'
+import {
+  bodyText,
+  createBrowserNotification,
+  notificationTag,
+  pendingNotificationTag,
+  pendingTitleKey,
+  shouldShow,
+  titleKey,
+} from '../src/client/notifier.ts'
 
 describe('titleKey', () => {
   it('maps every reason to its title key', () => {
@@ -61,5 +69,42 @@ describe('pendingTitleKey', () => {
     expect(pendingTitleKey('approval')).toBe('notify.titleApproval')
     expect(pendingTitleKey('question')).toBe('notify.titleQuestion')
     expect(pendingTitleKey('plan-review')).toBe('notify.titlePlanReview')
+  })
+})
+
+describe('createBrowserNotification', () => {
+  it('reports unavailable and ungranted browser surfaces', () => {
+    expect(createBrowserNotification(undefined, 'test', {})).toEqual({
+      ok: false,
+      message: 'The Notification API is unavailable in this browser context.',
+    })
+    const ungranted = class { static permission = 'default' } as unknown as typeof Notification
+    expect(createBrowserNotification(ungranted, 'test', {})).toEqual({
+      ok: false,
+      message: 'Notification permission is not granted.',
+    })
+  })
+
+  it('returns the created notification', () => {
+    let created: object | undefined
+    const api = class {
+      static permission = 'granted'
+      onclick = null
+      onerror = null
+      constructor() { created = this }
+    } as unknown as typeof Notification
+    const result = createBrowserNotification(api, 'test', { body: 'body' })
+    expect(result).toEqual({ ok: true, notification: created })
+  })
+
+  it('contains constructor failures', () => {
+    const api = class {
+      static permission = 'granted'
+      constructor() { throw new Error('system notifications unavailable') }
+    } as unknown as typeof Notification
+    expect(createBrowserNotification(api, 'test', {})).toEqual({
+      ok: false,
+      message: 'system notifications unavailable',
+    })
   })
 })

@@ -237,6 +237,11 @@ export const cssText = `
   font-size: 12px;
   line-height: 18px;
 }
+.dsh_notification_hint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
 .dsh_notification_empty {
   color: var(--dsw-alias-label-tertiary);
   font-size: 13px;

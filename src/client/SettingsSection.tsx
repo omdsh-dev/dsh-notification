@@ -12,7 +12,7 @@ import type { PropsLocale, PropsRuntime, InjectFace } from '@deepseek-ai/dsh-cli
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { NotificationRule, NotificationSettings } from '../contract.ts'
 import type { NotificationKey } from './locales.ts'
-import { notificationsApi } from './notifier.ts'
+import { notificationsApi, type NotificationCreationResult } from './notifier.ts'
 import { emptyRule, firstRuleError, patchRule, removeRule } from './rules.ts'
 
 /** The per-outcome toggle fields. */
@@ -24,7 +24,7 @@ export interface NotificationSectionInjected {
   hooks: { settings: SnapshotStore<NotificationSettings> }
   set: (patch: Partial<NotificationSettings>) => void
   requestPermission: () => Promise<NotificationPermission>
-  sendTest: () => void
+  sendTest: () => NotificationCreationResult
 }
 
 /** Full section props: runtime share + injected face + the locale seat. */
@@ -44,6 +44,12 @@ const PENDING: ReadonlyArray<{ field: PendingField; key: NotificationKey; defaul
   { field: 'notifyQuestion', key: 'settings.pending.question', defaultValue: true },
   { field: 'notifyPlanReview', key: 'settings.pending.planReview', defaultValue: false },
 ]
+
+interface PermissionHint {
+  readonly key: NotificationKey
+  readonly error: boolean
+  readonly params?: Record<string, string>
+}
 
 /** A single-outcome-toggle patch. */
 function notifyPatch(field: NotifyField | PendingField, checked: boolean): Partial<NotificationSettings> {
@@ -139,7 +145,7 @@ function RuleRow(props: {
 export function NotificationSettingsSection({ useSettings, set, requestPermission, sendTest, t }: NotificationSectionProps) {
   const settings = useSettings(snapshot => snapshot)
   const [permission, setPermission] = useState<NotificationPermission>(() => notificationsApi()?.permission ?? 'denied')
-  const [permissionHint, setPermissionHint] = useState<NotificationKey | null>(null)
+  const [permissionHint, setPermissionHint] = useState<PermissionHint | null>(null)
   const [draft, setDraft] = useState<NotificationRule[] | null>(null)
   const [focusedRuleId, setFocusedRuleId] = useState<string | null>(null)
 
@@ -193,11 +199,16 @@ export function NotificationSettingsSection({ useSettings, set, requestPermissio
       setPermission(current)
     }
     if (current !== 'granted') {
-      setPermissionHint(current === 'denied' ? 'settings.permission.deniedHint' : 'settings.permission.defaultHint')
+      setPermissionHint({
+        key: current === 'denied' ? 'settings.permission.deniedHint' : 'settings.permission.defaultHint',
+        error: true,
+      })
       return
     }
-    setPermissionHint(null)
-    sendTest()
+    const result = sendTest()
+    setPermissionHint(result.ok
+      ? { key: 'settings.permission.testSent', error: false }
+      : { key: 'settings.permission.testFailed', error: true, params: { message: result.message } })
   }
 
   const permissionText = t(`settings.permission.${permission}`)
@@ -256,7 +267,14 @@ export function NotificationSettingsSection({ useSettings, set, requestPermissio
             {t('settings.permission.test')}
           </button>
         </div>
-        {permissionHint === null ? null : <span className="dsh_notification_error">{t(permissionHint)}</span>}
+        {permissionHint === null ? null : (
+          <span
+            className={permissionHint.error ? 'dsh_notification_error' : 'dsh_notification_hint'}
+            aria-live="polite"
+          >
+            {t(permissionHint.key, permissionHint.params)}
+          </span>
+        )}
       </div>
 
       <div className="dsh_notification_card">

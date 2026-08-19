@@ -18,6 +18,8 @@ export declare const zh: {
     'settings.permission.deniedHint': string;
     'settings.permission.request': string;
     'settings.permission.test': string;
+    'settings.permission.testSent': string;
+    'settings.permission.testFailed': string;
     'settings.when.title': string;
     'settings.when.subtitle': string;
     'settings.when.completed': string;
@@ -81,6 +83,8 @@ export declare const en: {
     'settings.permission.deniedHint': string;
     'settings.permission.request': string;
     'settings.permission.test': string;
+    'settings.permission.testSent': string;
+    'settings.permission.testFailed': string;
     'settings.when.title': string;
     'settings.when.subtitle': string;
     'settings.when.completed': string;
