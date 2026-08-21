@@ -2,6 +2,17 @@ import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection';
 import type { SessionEvent } from '@deepseek-ai/dsh-session';
 import type { NotificationProjectionValue } from './contract.ts';
 import type { ResolvedConfig } from './types.ts';
+/**
+ * Augment the projection table: `notification` is a client-visible key whose
+ * host fold state is this unit's accumulated turn summary. The harness
+ * `sessionProjections` registry requires every client-visible key to declare
+ * both tables (fold state + wire payload) before it serves the wire view.
+ */
+declare module '@deepseek-ai/dsh-session-projection/types' {
+    interface SessionProjectionStateMap {
+        notification: NotificationProjectionState;
+    }
+}
 /** Accumulated turn in progress plus the last finalized completion. */
 export interface NotificationProjectionState {
     /** The open turn's text and tool names; null outside a turn. */
@@ -32,9 +43,14 @@ export declare function boundText(text: string, maxChars: number): string;
  * @returns the next state.
  */
 export declare function applyProjectionEvent(state: NotificationProjectionState, event: SessionEvent, maxChars: number): NotificationProjectionState;
+/** The client-visible `notification` unit: the fold definition with its wire face required. */
+type NotificationProjectionUnit = ProjectionDefinition<'notification', NotificationProjectionState> & {
+    wire: NonNullable<ProjectionDefinition<'notification', NotificationProjectionState>['wire']>;
+};
 /**
  * Build the `notification` projection unit.
  * @param config - resolved plugin configuration (body budget).
  * @returns the projection definition registered on the projection seam.
  */
-export declare function notificationProjection(config: ResolvedConfig): ProjectionDefinition<'notification', NotificationProjectionState>;
+export declare function notificationProjection(config: ResolvedConfig): NotificationProjectionUnit;
+export {};

@@ -9,8 +9,21 @@
 import { z } from 'zod'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-session-projection/types'
 import type { NotificationProjectionValue } from './contract.ts'
 import type { ResolvedConfig } from './types.ts'
+
+/**
+ * Augment the projection table: `notification` is a client-visible key whose
+ * host fold state is this unit's accumulated turn summary. The harness
+ * `sessionProjections` registry requires every client-visible key to declare
+ * both tables (fold state + wire payload) before it serves the wire view.
+ */
+declare module '@deepseek-ai/dsh-session-projection/types' {
+  interface SessionProjectionStateMap {
+    notification: NotificationProjectionState
+  }
+}
 
 /** Accumulated turn in progress plus the last finalized completion. */
 export interface NotificationProjectionState {
@@ -92,22 +105,51 @@ export function applyProjectionEvent(
 }
 
 /**
+ * Schema for the fold state, validated before a persisted checkpoint seeds a
+ * fold (the projection cache round-trips `(sessionId, key, ver, seq, val)`).
+ */
+const stateSchema = z.object({
+  openTurn: z.object({
+    turn: z.number().int().nonnegative(),
+    text: z.string(),
+    tools: z.array(z.string()),
+  }).nullable(),
+  last: z.object({
+    turn: z.number().int().nonnegative(),
+    reason: z.string(),
+    body: z.string(),
+    tools: z.array(z.string()),
+  }).nullable(),
+})
+
+/** Schema for the wire payload (`view` output) before it leaves the host. */
+const viewSchema = z.object({
+  turn: z.number().int().nonnegative(),
+  reason: z.string(),
+  body: z.string(),
+  tools: z.array(z.string()),
+}).strict()
+
+/** The client-visible `notification` unit: the fold definition with its wire face required. */
+type NotificationProjectionUnit = ProjectionDefinition<'notification', NotificationProjectionState> & {
+  wire: NonNullable<ProjectionDefinition<'notification', NotificationProjectionState>['wire']>
+}
+
+/**
  * Build the `notification` projection unit.
  * @param config - resolved plugin configuration (body budget).
  * @returns the projection definition registered on the projection seam.
  */
-export function notificationProjection(config: ResolvedConfig): ProjectionDefinition<'notification', NotificationProjectionState> {
+export function notificationProjection(config: ResolvedConfig): NotificationProjectionUnit {
   return {
     key: 'notification',
-    schema: z.object({
-      turn: z.number().int().nonnegative(),
-      reason: z.string(),
-      body: z.string(),
-      tools: z.array(z.string()),
-    }).strict(),
+    stateSchema,
     init: () => ({ openTurn: null, last: null }),
     apply: (state, event) => applyProjectionEvent(state, event, config.maxBodyChars),
-    view: state => state.last ?? EMPTY_PROJECTION,
+    wire: {
+      viewSchema,
+      view: state => state.last ?? EMPTY_PROJECTION,
+    },
     stateVersion: 1,
   }
 }

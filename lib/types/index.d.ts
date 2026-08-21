@@ -21,11 +21,7 @@ export interface Config {
  * The inferred schema type keeps the callable form accepting partial input, so
  * `Config({})` yields the defaults (what the Loader does for compositions).
  */
-export declare const Config: z<Schemastery.ObjectS<{
-    maxBodyChars: z<number, number>;
-}>, Schemastery.ObjectT<{
-    maxBodyChars: z<number, number>;
-}>>;
+export declare const Config: z<any, any>;
 /**
  * Register the `notification` projection unit; the registration is an effect
  * on this plugin's fiber, so unloading removes the key.
