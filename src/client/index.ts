@@ -87,7 +87,7 @@ export function apply(ctx: ClientContext): void {
   // reconnect re-seeds so a completion that happened while disconnected
   // never fires.
   ctx.effect(() => {
-    const observedTurn = new Map<string, number>()
+    const observedTurn = new Map<SessionId, number>()
     const reseed = (): void => { observedTurn.clear() }
     const stopReset = ctx.on('connection/reset', reseed)
     const off = sessions.list.subscribe(() => {

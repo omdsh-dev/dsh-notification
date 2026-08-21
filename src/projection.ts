@@ -12,6 +12,29 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { NotificationProjectionValue } from './contract.ts'
 import type { ResolvedConfig } from './types.ts'
 
+/**
+ * DSH 0.1.1-rc.2 projection contract (merge-extensible type tables): a domain
+ * declares its keys here so `ProjectionDefinition<'notification', …>` type
+ * checks, and the runtime's `sessionProjections.register` accepts the unit.
+ * Without the merge the key does not satisfy `keyof SessionProjectionStateMap`
+ * and the build fails.
+ */
+declare module '@deepseek-ai/dsh-session-projection/types' {
+  interface SessionProjectionStateMap {
+    /** Fold state: the open turn (text/tools) plus the last completed round. */
+    notification: NotificationProjectionState
+  }
+  interface SessionProjectionMap {
+    /** The last completed turn's bounded summary (reason, reply text, tool names). */
+    notification: NotificationProjectionValue
+  }
+}
+
+/** The definition returned by {@link notificationProjection}: wire is always present. */
+export type NotificationProjectionDefinition = Omit<ProjectionDefinition<'notification', NotificationProjectionState>, 'wire'> & {
+  wire: NonNullable<ProjectionDefinition<'notification', NotificationProjectionState>['wire']>
+}
+
 /** Accumulated turn in progress plus the last finalized completion. */
 export interface NotificationProjectionState {
   /** The open turn's text and tool names; null outside a turn. */
@@ -96,18 +119,28 @@ export function applyProjectionEvent(
  * @param config - resolved plugin configuration (body budget).
  * @returns the projection definition registered on the projection seam.
  */
-export function notificationProjection(config: ResolvedConfig): ProjectionDefinition<'notification', NotificationProjectionState> {
+export function notificationProjection(config: ResolvedConfig): NotificationProjectionDefinition {
   return {
     key: 'notification',
-    schema: z.object({
-      turn: z.number().int().nonnegative(),
-      reason: z.string(),
-      body: z.string(),
-      tools: z.array(z.string()),
-    }).strict(),
+    // DSH 0.1.1-rc.2 projection contract: `stateSchema` validates persisted
+    // cache rows before they seed a fold; `wire` declares the client-visible
+    // view. The pre-rc.2 `schema`/`view` fields are ignored by the registry,
+    // which silently registers such a unit as host-only — its value never
+    // reaches client snapshots or the `session/projection` frame stream and
+    // browser notifications stop firing. The state shape is unchanged, so
+    // `stateVersion` stays 1.
+    stateSchema: z.any(),
     init: () => ({ openTurn: null, last: null }),
     apply: (state, event) => applyProjectionEvent(state, event, config.maxBodyChars),
-    view: state => state.last ?? EMPTY_PROJECTION,
+    wire: {
+      viewSchema: z.object({
+        turn: z.number().int().nonnegative(),
+        reason: z.string(),
+        body: z.string(),
+        tools: z.array(z.string()),
+      }).strict(),
+      view: state => state.last ?? EMPTY_PROJECTION,
+    },
     stateVersion: 1,
   }
 }
