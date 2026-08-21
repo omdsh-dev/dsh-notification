@@ -33,7 +33,7 @@ function config(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig {
 function fold(events: readonly SessionEvent[], cfg: ResolvedConfig): NotificationProjectionValue {
   let state: NotificationProjectionState = { openTurn: null, last: null }
   for (const event of events) state = applyProjectionEvent(state, event, cfg.maxBodyChars)
-  return notificationProjection(cfg).view(state)
+  return notificationProjection(cfg).wire.view(state)
 }
 
 describe('boundText', () => {
