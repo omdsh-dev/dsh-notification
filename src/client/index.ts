@@ -59,10 +59,14 @@ interface NotificationSessionListState {
   readonly current: SessionId | undefined
 }
 
-/** 0.1.2's separate pending-interaction observable. */
+/** 0.1.2's separate pending-interaction observable, or 0.2.x's unified session-status source. */
 interface UiSessionFace {
-  readonly pendingInteractions: {
+  readonly pendingInteractions?: {
     getSnapshot(): ReadonlyMap<SessionId, { readonly kind: string }>
+    subscribe(listener: () => void): () => void
+  }
+  readonly sessionStatus?: {
+    getSnapshot(): ReadonlyMap<SessionId, { readonly pendingInteraction?: { readonly kind: string } }>
     subscribe(listener: () => void): () => void
   }
 }
@@ -179,7 +183,8 @@ export function apply(ctx: ClientContext): void {
     const sequences = new Map<SessionId, number>()
     const pendingKind = (state: NotificationSessionListState, id: SessionId): PendingKind | undefined =>
       state.byId[id]?.pendingInteraction
-      ?? asPendingKind(uiSession?.pendingInteractions.getSnapshot().get(id)?.kind)
+      ?? asPendingKind(uiSession?.pendingInteractions?.getSnapshot().get(id)?.kind
+        ?? uiSession?.sessionStatus?.getSnapshot().get(id)?.pendingInteraction?.kind)
     const seed = (state: NotificationSessionListState): void => {
       const live = new Set(state.ids)
       for (const id of state.ids) observed.set(id, { kind: pendingKind(state, id) })
@@ -232,7 +237,7 @@ export function apply(ctx: ClientContext): void {
       seed(state)
     }
     const off = sessions.list.subscribe(run)
-    const offPending = uiSession?.pendingInteractions.subscribe(run)
+    const offPending = (uiSession?.pendingInteractions ?? uiSession?.sessionStatus)?.subscribe(run)
     return () => { off(); offPending?.(); stopReset() }
   }, 'dsh-notification: pending runner')
 
