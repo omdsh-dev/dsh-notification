@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   bodyText,
+  notificationTitle,
   createBrowserNotification,
   notificationTag,
   pendingNotificationTag,
@@ -49,6 +50,21 @@ describe('shouldShow', () => {
   it('notifies for another session while DSH is visible', () => {
     expect(shouldShow('granted', true, false, 'session-a', 'session-b')).toBe(true)
     expect(shouldShow('granted', true, false, 'session-a', undefined)).toBe(true)
+  })
+})
+
+describe('notificationTitle', () => {
+  it('appends the session title to the reason label', () => {
+    expect(notificationTitle('DSH finished', 'Deploy the app')).toBe('DSH finished — Deploy the app')
+  })
+
+  it('keeps the bare label when the session has no title', () => {
+    expect(notificationTitle('DSH finished', undefined)).toBe('DSH finished')
+    expect(notificationTitle('DSH finished', '   ')).toBe('DSH finished')
+  })
+
+  it('trims the session title', () => {
+    expect(notificationTitle('DSH failed', '  Recon  ')).toBe('DSH failed — Recon')
   })
 })
 

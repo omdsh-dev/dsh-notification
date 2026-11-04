@@ -25,6 +25,19 @@ export function pendingTitleKey(kind: PendingKind): 'notify.titleApproval' | 'no
   }
 }
 
+/**
+ * The notification title line: the reason label plus the session title, so
+ * notifications from several sessions are distinguishable at a glance. The
+ * reason stays first so an OS truncation only clips the session title.
+ * @param reasonLabel - the localized outcome label (already translated).
+ * @param sessionTitle - the completed session's durable title, when known.
+ * @returns the notification title.
+ */
+export function notificationTitle(reasonLabel: string, sessionTitle: string | undefined): string {
+  const trimmed = sessionTitle?.trim()
+  return trimmed === undefined || trimmed === '' ? reasonLabel : `${reasonLabel} — ${trimmed}`
+}
+
 /** The notification body: the reply snippet, or the empty-body fallback. */
 export function bodyText(body: string, emptyBody: string): string {
   const trimmed = body.trim()
