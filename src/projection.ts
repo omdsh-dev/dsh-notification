@@ -53,11 +53,18 @@ export function applyProjectionEvent(
     case 'assistant/message': {
       const open = state.openTurn
       if (open === null || open.turn !== event.data.turn) return state
-      let text = open.text
+      // The body is the turn's FINAL assistant text, not a concatenation of
+      // every message: a turn narrates before each tool call and answers last,
+      // so accumulating text made the body start with the narration and the
+      // 400-char budget cut the actual answer off. Replacing on each text-bearing
+      // message keeps the last answer; a tool-only message keeps the previous
+      // text so a trailing call cannot erase it.
+      let messageText = ''
       for (const block of event.data.message.content) {
-        if (block.type === 'text') text += block.text
+        if (block.type === 'text') messageText += block.text
       }
-      if (text.length > maxChars) text = boundText(text, maxChars)
+      if (messageText.trim() === '') return state
+      const text = boundText(messageText, maxChars)
       if (text === open.text) return state
       return { ...state, openTurn: { ...open, text } }
     }
@@ -116,6 +123,6 @@ Omit<ProjectionDefinition<'notification', NotificationProjectionState>, 'wire'> 
       viewSchema,
       view: state => state.last ?? EMPTY_PROJECTION,
     },
-    stateVersion: 1,
+    stateVersion: 2,
   }
 }

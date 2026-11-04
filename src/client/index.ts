@@ -18,10 +18,19 @@ import { NotificationSettingsSection, type NotificationSectionInjected } from '.
 import { NS, en, zh } from './locales.ts'
 import { adoptStyles } from './styles.ts'
 import { createNotificationSettingsStore } from './store.ts'
-import { notificationFor, pendingAdvance, pendingNotificationFor, projectionAdvance } from './runner.ts'
+import {
+  currentSessionId,
+  notificationFor,
+  pendingAdvance,
+  pendingNotificationFor,
+  pendingSourceOf,
+  projectionAdvance,
+  type PendingInteractionFace,
+} from './runner.ts'
 import {
   bodyText,
   createBrowserNotification,
+  notificationTitle,
   notificationsApi,
   pendingTitleKey,
   shouldShow,
@@ -47,6 +56,8 @@ interface NotificationSessionSummary {
   readonly displayTitle?: string
   /** 0.1.1 carries pending status on the row itself. */
   readonly pendingInteraction?: PendingKind
+  /** Local ownership counts; `mainView` marks the session on screen (0.2.x). */
+  readonly retainedBy?: Readonly<Record<string, number | undefined>> | undefined
   readonly projectionValues?: {
     readonly notification?: import('../contract.ts').NotificationProjectionValue
   }
@@ -57,14 +68,6 @@ interface NotificationSessionListState {
   readonly ids: readonly SessionId[]
   readonly byId: Readonly<Record<SessionId, NotificationSessionSummary>>
   readonly current: SessionId | undefined
-}
-
-/** 0.1.2's separate pending-interaction observable. */
-interface UiSessionFace {
-  readonly pendingInteractions: {
-    getSnapshot(): ReadonlyMap<SessionId, { readonly kind: string }>
-    subscribe(listener: () => void): () => void
-  }
 }
 
 /** Slot registry surface common to the pre- and post-0.1.2 client assemblies. */
@@ -92,7 +95,11 @@ export function apply(ctx: ClientContext): void {
   // different `sessions` Context member, and the two collide in this
   // single-program build.
   const sessions = ctx.get('sessions') as unknown as SessionsListFace
-  const uiSession = ctx.get('uiSession') as unknown as UiSessionFace | undefined
+  // `uiSession` is an optional service and may not be ACTIVE when this plugin
+  // applies (strict `ctx.get` returns undefined during the boot wave), so every
+  // read goes through this accessor instead of a captured handle (issue #19).
+  const uiSessionFace = (): PendingInteractionFace | undefined =>
+    ctx.get('uiSession') as unknown as PendingInteractionFace | undefined
   const slots = (ctx as unknown as { slots: SlotsFace }).slots
   const settings: SnapshotStore<NotificationSettings> = createNotificationSettingsStore()
   const set = (patch: Partial<NotificationSettings>): void => {
@@ -101,13 +108,34 @@ export function apply(ctx: ClientContext): void {
   const requestPermission = (): Promise<NotificationPermission> =>
     notificationsApi()?.requestPermission() ?? Promise.resolve<NotificationPermission>('denied')
 
-  const show = (title: string, body: string, tag: string, requireInteraction: boolean): NotificationCreationResult => {
+  // Deep link for the click action: land on the session that just finished.
+  // `uiWorkspace.openSession` is the public navigation entry on 0.2.x (it also
+  // switches workspace when needed). Layouts without it keep the previous
+  // behaviour — focusing the window only.
+  const openSession = (sessionId: string): void => {
+    const workspace = ctx.get('uiWorkspace') as { openSession?: (target: string) => void } | undefined
+    try {
+      workspace?.openSession?.(sessionId)
+    } catch (error) {
+      console.error('[dsh-notification] could not open the session from the notification', error)
+    }
+  }
+  const show = (
+    title: string,
+    body: string,
+    tag: string,
+    requireInteraction: boolean,
+    sessionId?: string,
+  ): NotificationCreationResult => {
     const result = createBrowserNotification(notificationsApi(), title, { body, tag, requireInteraction })
     if (!result.ok) {
       console.error(`[dsh-notification] notification creation failed: ${result.message}`)
       return result
     }
-    result.notification.onclick = () => { window.focus() }
+    result.notification.onclick = () => {
+      window.focus()
+      if (sessionId !== undefined) openSession(sessionId)
+    }
     result.notification.onerror = () => {
       console.error('[dsh-notification] the browser reported a notification delivery error')
     }
@@ -134,31 +162,39 @@ export function apply(ctx: ClientContext): void {
     const off = sessions.list.subscribe(() => {
       const state = sessions.list.getSnapshot()
       const current = settings.getSnapshot()
+      const inView = currentSessionId(state.current, state.byId)
       for (const id of state.ids) {
         const summary = state.byId[id]
         if (summary === undefined) continue
         const projection = summary.projectionValues?.notification
-        const { nextTurn, fresh } = projectionAdvance(observedTurn.get(id), projection)
-        observedTurn.set(id, nextTurn)
-        if (!fresh) continue
+        const observation = projectionAdvance(observedTurn.get(id), projection)
+        // An absent projection is not "turn 0": making no decision here keeps the
+        // session unbaselined until a value is served, so the first frame for a
+        // historical turn is a silent seed rather than a reload notification
+        // storm (issue #20). An existing baseline is left untouched — deleting
+        // it would swallow the next genuine completion.
+        if (observation.kind === 'absent') continue
+        observedTurn.set(id, observation.turn)
+        if (!observation.fresh) continue
         const plan = notificationFor(summary.id, summary.origin, summary.title, projection, current)
         if (plan === null) {
-          console.info(`[dsh-notification] turn ${nextTurn} ${id} suppressed by settings/rules`)
+          console.info(`[dsh-notification] turn ${observation.turn} ${id} suppressed by settings/rules`)
           continue
         }
         const permission = notificationsApi()?.permission ?? 'denied'
-        const showIt = shouldShow(permission, current.backgroundOnly, document.hidden, id, state.current)
+        const showIt = shouldShow(permission, current.backgroundOnly, document.hidden, id, inView)
         console.info(
-          `[dsh-notification] turn ${nextTurn} ${id}: reason=${plan.reason} show=${showIt}`
+          `[dsh-notification] turn ${observation.turn} ${id}: reason=${plan.reason} show=${showIt}`
           + ` (permission=${permission} backgroundOnly=${current.backgroundOnly}`
-          + ` hidden=${document.hidden} current=${String(state.current)})`,
+          + ` hidden=${document.hidden} current=${String(inView)})`,
         )
         if (showIt) {
           show(
-            t(titleKey(plan.reason)),
+            notificationTitle(t(titleKey(plan.reason)), plan.sessionTitle),
             bodyText(plan.body, t('notify.emptyBody')),
             plan.tag,
             current.requireInteraction,
+            summary.id,
           )
         }
       }
@@ -179,7 +215,7 @@ export function apply(ctx: ClientContext): void {
     const sequences = new Map<SessionId, number>()
     const pendingKind = (state: NotificationSessionListState, id: SessionId): PendingKind | undefined =>
       state.byId[id]?.pendingInteraction
-      ?? asPendingKind(uiSession?.pendingInteractions.getSnapshot().get(id)?.kind)
+      ?? asPendingKind(pendingSourceOf(uiSessionFace())?.getSnapshot().get(id)?.kind)
     const seed = (state: NotificationSessionListState): void => {
       const live = new Set(state.ids)
       for (const id of state.ids) observed.set(id, { kind: pendingKind(state, id) })
@@ -199,6 +235,7 @@ export function apply(ctx: ClientContext): void {
     const run = (): void => {
       const state = sessions.list.getSnapshot()
       const current = settings.getSnapshot()
+      const inView = currentSessionId(state.current, state.byId)
       for (const id of state.ids) {
         const summary = state.byId[id]
         if (summary === undefined) continue
@@ -219,21 +256,29 @@ export function apply(ctx: ClientContext): void {
         )
         if (plan === null) continue
         const permission = notificationsApi()?.permission ?? 'denied'
-        const showIt = shouldShow(permission, current.backgroundOnly, document.hidden, id, state.current)
+        const showIt = shouldShow(permission, current.backgroundOnly, document.hidden, id, inView)
         if (showIt) {
           show(
             t(pendingTitleKey(plan.kind)),
             bodyText(plan.body, t('notify.pendingBody')),
             plan.tag,
             current.requireInteraction,
+            summary.id,
           )
         }
       }
       seed(state)
     }
     const off = sessions.list.subscribe(run)
-    const offPending = uiSession?.pendingInteractions.subscribe(run)
-    return () => { off(); offPending?.(); stopReset() }
+    // Defer the pending-interactions subscription until `uiSession` is active.
+    // Reading it once at apply time silently disabled every pending notification
+    // on harness versions that boot this plugin before that service reaches
+    // ACTIVE — the boot-wave race reported as issue #19.
+    const pendingFiber = ctx.inject(['uiSession'], (uiCtx: ClientContext) => {
+      const face = uiCtx.get('uiSession') as unknown as PendingInteractionFace
+      return pendingSourceOf(face)?.subscribe(run)
+    })
+    return () => { off(); stopReset(); void pendingFiber.dispose() }
   }, 'dsh-notification: pending runner')
 
   // The settings section: master switch, permission card, outcome toggles, rules, advanced.

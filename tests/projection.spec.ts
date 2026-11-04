@@ -50,14 +50,36 @@ describe('applyProjectionEvent', () => {
   it('folds a completed turn into the last-completion summary', () => {
     const value = fold([
       evt('turn/start', { turn: 1 }),
-      assistant(1, 'deploy '),
-      assistant(1, 'done'),
+      assistant(1, 'deploy done'),
       toolCall(1, 'bash'),
       toolCall(1, 'bash'),
       toolCall(1, 'edit'),
       evt('turn/end', { turn: 1, reason: { kind: 'completed' } }),
     ], config())
     expect(value).toEqual({ turn: 1, reason: 'completed', body: 'deploy done', tools: ['bash', 'edit'] })
+  })
+
+  it('reports the final assistant text, not the narration before tool calls', () => {
+    const value = fold([
+      evt('turn/start', { turn: 1 }),
+      assistant(1, 'Let me check the config first.'),
+      toolCall(1, 'bash'),
+      assistant(1, 'Fixed: the config now loads.'),
+      evt('turn/end', { turn: 1, reason: { kind: 'completed' } }),
+    ], config())
+    expect(value.body).toBe('Fixed: the config now loads.')
+    expect(value.tools).toEqual(['bash'])
+  })
+
+  it('keeps the previous text when a later message carries no text', () => {
+    const value = fold([
+      evt('turn/start', { turn: 1 }),
+      assistant(1, 'The answer.'),
+      assistant(1, '   '),
+      toolCall(1, 'bash'),
+      evt('turn/end', { turn: 1, reason: { kind: 'completed' } }),
+    ], config())
+    expect(value.body).toBe('The answer.')
   })
 
   it('reports the empty view before any completion', () => {
@@ -94,7 +116,7 @@ describe('applyProjectionEvent', () => {
   it('carries a stateVersion and key on the definition', () => {
     const def = notificationProjection(config())
     expect(def.key).toBe('notification')
-    expect(def.stateVersion).toBe(1)
+    expect(def.stateVersion).toBe(2)
     expect(def.stateSchema.parse({ openTurn: null, last: null })).toEqual({ openTurn: null, last: null })
     expect(def.wire?.viewSchema.parse(EMPTY_PROJECTION)).toEqual(EMPTY_PROJECTION)
   })

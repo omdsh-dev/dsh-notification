@@ -9,6 +9,15 @@ export declare function titleKey(reason: NotificationReason): 'notify.titleCompl
 /** The title key for one pending interaction. */
 export declare function pendingTitleKey(kind: PendingKind): 'notify.titleApproval' | 'notify.titleQuestion' | 'notify.titlePlanReview';
 /** The notification body: the reply snippet, or the empty-body fallback. */
+/**
+ * The notification title line: the reason label plus the session title, so
+ * notifications from several sessions are distinguishable at a glance. The
+ * reason stays first so an OS truncation only clips the session title.
+ * @param reasonLabel - the localized outcome label (already translated).
+ * @param sessionTitle - the completed session's durable title, when known.
+ * @returns the notification title.
+ */
+export declare function notificationTitle(reasonLabel: string, sessionTitle: string | undefined): string;
 export declare function bodyText(body: string, emptyBody: string): string;
 /**
  * Whether a completion should surface a desktop notification, given the browser
